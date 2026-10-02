@@ -142,6 +142,7 @@ export class ExternalLink {
   @Column({default:true}) active:boolean;
 }
 
+
 @Entity('news')
 export class News {
   @PrimaryGeneratedColumn('uuid') id:string;
@@ -149,7 +150,7 @@ export class News {
   @Column('text') summary:string;
   @Column('text',{nullable:true}) content:string;
   @Column({default:'Campus'}) category:string;
-  @Column({nullable:true}) imageUrl:string;
+  @Column({ type: 'text', nullable: true }) imageUrl:string;
   @ManyToOne(()=>User,{eager:true,nullable:true}) author:User;
   @Column({default:true}) published:boolean;
   @CreateDateColumn() createdAt:Date;

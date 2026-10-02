@@ -1289,42 +1289,20 @@ export class LinksController {
 ========================================================= */
 
 @Controller('news')
-@UseGuards(
-  JwtAuthGuard,
-  RolesGuard,
-)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class NewsController {
-  constructor(
-    private readonly service:
-      NewsService,
-  ) {}
+  constructor(private readonly service: NewsService) {}
 
   @Get()
-  @Roles(
-    Role.ADMIN,
-    Role.EDITOR,
-    Role.CONSULTOR,
-  )
+  @Roles(Role.ADMIN, Role.EDITOR, Role.CONSULTOR)
   list() {
     return this.service.list();
   }
 
   @Post()
-  @Roles(
-    Role.ADMIN,
-    Role.EDITOR,
-  )
-  create(
-    @Body()
-    body: any,
-
-    @Req()
-    request: any,
-  ) {
-    return this.service.create(
-      body,
-      request.user,
-    );
+  @Roles(Role.ADMIN, Role.EDITOR)
+  create(@Body() body: any, @Req() request: any) {
+    return this.service.create(body, request.user);
   }
 }
 
