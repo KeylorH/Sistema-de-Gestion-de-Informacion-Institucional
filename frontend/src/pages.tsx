@@ -5220,98 +5220,155 @@ export function Links() {
 
 \========================================================= */
 
-
+const NEWS_CATEGORIES = ['Eventos', 'Comunicados', 'Avisos'];
 
 export function News() {
-
-  const [d, setD] = useState<any[]>([]);
-
-
-
-  useEffect(() => {
-
-    api
-
-      .get('/news')
-
-      .then((r) => setD(r.data))
-
-      .catch((error) => {
-
-        console.error(
-
-          'Error cargando noticias:',
-
-          error
-
-        );
-
-      });
-
-  }, []);
-
-
-
-  return (
-
-    <>
-
-      <h1>Noticias</h1>
-
-
-
-      <p>
-
-        Mantente informado sobre actividades y comunicados del
-
-        Campus Tecnológico de San José.
-
-      </p>
-
-
-
-      <div className="cards">
-
-        {d.map((x) => (
-
-          <Card key={x.id}>
-
-            <Badge>{x.category}</Badge>
-
-
-
-            <h3>{x.title}</h3>
-
-
-
-            <p>{x.summary}</p>
-
-
-
-            <small>
-
-              {x.createdAt
-
-                ? new Date(
-
-                    x.createdAt
-
-                  ).toLocaleDateString()
-
-                : ''}
-
-            </small>
-
-          </Card>
-
-        ))}
-
-      </div>
-
-    </>
-
+  const { user } = useAuth() as any;
+  const roles: string[] = user?.roles ?? [];
+  const canCreate = roles.some((r) =>
+    ['ADMIN', 'EDITOR'].includes(String(r).toUpperCase()),
   );
 
+  const [d, setD] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState(NEWS_CATEGORIES[0]);
+  const [summary, setSummary] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = () =>
+    api
+      .get('/news')
+      .then((r) => setD(r.data))
+      .catch((error) => console.error('Error cargando noticias:', error));
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const onFile = (f?: File) => {
+    if (!f) return;
+    if (!f.type.startsWith('image/')) return alert('Selecciona una imagen.');
+    if (f.size > 2 * 1024 * 1024) return alert('La imagen debe pesar menos de 2 MB.');
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result as string);
+    reader.readAsDataURL(f);
+  };
+
+  const close = () => {
+    setOpen(false);
+    setTitle('');
+    setSummary('');
+    setImage(null);
+    setCategory(NEWS_CATEGORIES[0]);
+  };
+
+  const save = async () => {
+    if (!title.trim() || !summary.trim()) return alert('Completa el título y la descripción.');
+    setSaving(true);
+    try {
+      await api.post('/news', { title, category, summary, imageUrl: image });
+      close();
+      load();
+    } catch (error) {
+      console.error('Error creando noticia:', error);
+      alert('No se pudo crear la noticia.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="news-head">
+        <div>
+          <h1>Noticias</h1>
+          <p>
+            Mantente informado sobre actividades y comunicados del Campus
+            Tecnológico de San José.
+          </p>
+        </div>
+        {canCreate && (
+          <button className="news-add" onClick={() => setOpen(true)}>
+            + Nueva noticia
+          </button>
+        )}
+      </div>
+
+      <div className="news-grid">
+        {d.map((x) => (
+          <article className="news-card" key={x.id}>
+            <div
+              className="news-photo"
+              style={x.imageUrl ? { backgroundImage: `url(${x.imageUrl})` } : undefined}
+            />
+            <div className="news-body">
+              <span className="news-tag">{x.category}</span>
+              <h3>{x.title}</h3>
+              <p>{x.summary}</p>
+              <small>
+                {x.createdAt ? new Date(x.createdAt).toLocaleDateString() : ''}
+              </small>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {open && (
+        <div className="news-overlay" onClick={close}>
+          <div className="news-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Nueva noticia</h2>
+
+            <label>Foto de portada</label>
+            <label className="news-drop">
+              {image ? (
+                <img src={image} alt="Vista previa" />
+              ) : (
+                <span>Haz clic para subir una imagen (máx. 2 MB)</span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => onFile(e.target.files?.[0])}
+              />
+            </label>
+
+            <label>Título</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ej. Actividad cultural en el campus"
+            />
+
+            <label>Categoría</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {NEWS_CATEGORIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+
+            <label>Descripción</label>
+            <textarea
+              rows={3}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+            />
+
+            <div className="news-actions">
+              <button className="news-cancel" onClick={close}>
+                Cancelar
+              </button>
+              <button className="news-add" onClick={save} disabled={saving}>
+                {saving ? 'Guardando…' : 'Publicar noticia'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 
