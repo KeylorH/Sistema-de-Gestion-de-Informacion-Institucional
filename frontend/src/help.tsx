@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './auth';
 
-const SUPPORT_EMAIL = 'soporte@itcr.ac.cr'; 
-const SUPPORT_HOURS = 'Lunes a viernes, 8:00 a.m. a 4:00 p.m.'; 
+const SUPPORT_EMAIL = 'soporte@itcr.ac.cr'; // ⚠️ cámbialo por el correo real
+const SUPPORT_HOURS = 'Lunes a viernes, 8:00 a.m. a 4:00 p.m.'; // ⚠️ ajusta el horario
 
 const FAQ = [
   {
@@ -23,21 +24,28 @@ const FAQ = [
   },
   {
     q: '¿Cómo puedo cambiar mi contraseña?',
-    a: 'En la pantalla de inicio de sesión, haz clic en "¿Olvidaste tu contraseña?" y sigue las instrucciones para restablecerla.',
+    a: 'Ve a la sección "Cambiar contraseña" en el menú de usuario y sigue las instrucciones.',
   },
   {
-    q: '¿Cómo puedo actualizar mi información personal?',
-    a: 'Comunícate con el administrador del sistema para actualizar tu información personal.',
-  },
-  {
-    q: '¿Dónde puedo encontrar más información sobre el sistema?',
-    a: 'Puedes consultar la documentación disponible en el portal del sistema o contactar con el administrador para obtener más detalles.',
+    q: '¿Cómo puedo cerrar sesión?',
+    a: 'Haz clic en tu nombre de usuario en la esquina superior derecha y selecciona "Cerrar sesión".',
   },
 ];
 
 export function Help() {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [open, setOpen] = useState(0);
+
+  // Regresa a la pantalla anterior. Si se abrió /ayuda directamente
+  // (sin historial), va al login o al inicio según haya sesión.
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(auth?.user ? '/' : '/login');
+    }
+  };
 
   return (
     <div className="login-page">
@@ -45,16 +53,20 @@ export function Help() {
         <div className="login-sidebar-brand">
           <img className="login-sidebar-logo" src="/branding/logo-tec.svg" alt="TEC" />
           <p>Campus Tecnológico de San José</p>
-          <button className="login-sidebar-active" onClick={() => navigate('/login')}>
-            <span className="sidebar-home-icon">⌂</span>
-            Inicio
+          <button className="login-sidebar-active" onClick={goBack}>
+            <span className="sidebar-home-icon">←</span>
+            Volver
           </button>
         </div>
         <div className="login-sidebar-footer">
           <button className="help-nav-active">
             <span>?</span>Ayuda
           </button>
-          <button onClick={() => navigate('/acerca')}>
+          <button
+            onClick={() =>
+              alert('Sistema de Gestión de Información Institucional - Campus Tecnológico de San José.')
+            }
+          >
             <span>i</span>Acerca del sistema
           </button>
         </div>
@@ -101,8 +113,8 @@ export function Help() {
               <strong>{SUPPORT_HOURS}</strong>
             </div>
 
-            <button className="help-back" onClick={() => navigate('/login')}>
-              Volver a iniciar sesión
+            <button className="help-back" onClick={goBack}>
+              Volver
             </button>
           </section>
         </div>
