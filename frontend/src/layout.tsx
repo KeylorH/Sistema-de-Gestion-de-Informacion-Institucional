@@ -614,134 +614,45 @@ export default function Layout() {
 
         ================================================= */}
 
-
-
         <div className="sidebar-bottom">
 
-
-
           <button
-
             type="button"
-
             className="sidebar-secondary-action"
-
-            onClick={() => {
-
-              alert(
-
-                'Módulo de ayuda pendiente de implementar.',
-
-              );
-
-            }}
-
+            onClick={() => navigate('/ayuda')}
           >
+            <HelpCircle size={20} />
 
-
-
-            <HelpCircle
-
-              size={20}
-
-            />
-
-
-
-            <span>
-
-              Ayuda
-
-            </span>
-
-
-
+            <span>Ayuda</span>
           </button>
 
-
-
           <button
-
             type="button"
-
             className="sidebar-secondary-action"
-
             onClick={() => {
-
               alert(
-
                 'Sistema de Gestión de Información Institucional - Campus Tecnológico de San José.',
-
               );
-
             }}
-
           >
+            <Info size={20} />
 
-
-
-            <Info
-
-              size={20}
-
-            />
-
-
-
-            <span>
-
-              Acerca del sistema
-
-            </span>
-
-
-
+            <span>Acerca del sistema</span>
           </button>
-
-
 
           <button
-
             type="button"
-
             className="sidebar-logout"
-
-            onClick={
-
-              handleLogout
-
-            }
-
+            onClick={handleLogout}
           >
+            <LogOut size={20} />
 
-
-
-            <LogOut
-
-              size={20}
-
-            />
-
-
-
-            <span>
-
-              Cerrar sesión
-
-            </span>
-
-
-
+            <span>Cerrar sesión</span>
           </button>
-
-
 
         </div>
 
-
-
       </aside>
-
 
 
       {/* ===================================================
