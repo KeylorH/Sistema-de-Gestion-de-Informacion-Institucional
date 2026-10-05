@@ -16,6 +16,8 @@ import {
 
 import './styles.css';
 
+import { Help } from './help';
+
 import {
   AuthProvider,
   useAuth,
@@ -101,6 +103,12 @@ function App() {
         path="/login"
         element={<Login />}
       />
+
+      {/* AYUDA */}
+    <Route
+      path="/ayuda"
+      element={<Help />}
+    />
 
       <Route
         path="/cambiar-contrasena"

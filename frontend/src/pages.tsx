@@ -109,6 +109,12 @@ export function Login() {
 
       ===================================================== */}
 
+        {/* =====================================================
+
+          SIDEBAR
+
+      ===================================================== */}
+
       <aside className="login-sidebar">
 
         <div>
@@ -123,8 +129,6 @@ export function Login() {
             <p>Campus Tecnológico de San José</p>
           </div>
 
-
-
           <div className="login-sidebar-active">
 
             <span className="sidebar-home-icon">⌂</span>
@@ -135,54 +139,26 @@ export function Login() {
 
         </div>
 
-
-
         <div className="login-sidebar-footer">
 
           <button
-
             type="button"
-
-            onClick={() => {
-
-              alert(
-
-                "Para obtener ayuda, comuníquese con el administrador del sistema."
-
-              );
-
-            }}
-
+            onClick={() => navigate('/ayuda')}
           >
-
             <span>?</span>
-
             Ayuda
-
           </button>
 
-
-
           <button
-
             type="button"
-
             onClick={() => {
-
               alert(
-
                 "Sistema de Gestión de Información Institucional - Campus Tecnológico de San José."
-
               );
-
             }}
-
           >
-
             <span>ⓘ</span>
-
             Acerca del sistema
-
           </button>
 
         </div>
