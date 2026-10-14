@@ -16,6 +16,10 @@ import {
   CorrespondenceAttachment,
   CorrespondenceComment,
   CorrespondenceStatus,
+  InstitutionalCorrespondence,
+  InstitutionalCorrespondenceAttachment,
+  InstitutionalCorrespondenceDirection,
+  InstitutionalCorrespondenceStatus,
   ExternalLink,
   InstitutionalForm,
   News,
@@ -1053,6 +1057,434 @@ export class CorrespondenceService {
       current.sub,
       'DESCARGA_ZIP',
       'Correspondencia',
+      correspondenceId,
+      `Se descargaron ${fileCount} archivo(s) adjunto(s) en ZIP de ${correspondence.code}`,
+    );
+
+    return correspondence;
+  }
+}
+
+
+/* =========================================================
+   CORRESPONDENCIA INSTITUCIONAL
+   Separada del módulo histórico de Asignaciones.
+========================================================= */
+
+@Injectable()
+export class InstitutionalCorrespondenceService {
+  constructor(
+    @InjectRepository(InstitutionalCorrespondence)
+    private repo: Repository<InstitutionalCorrespondence>,
+
+    @InjectRepository(InstitutionalCorrespondenceAttachment)
+    private attachments: Repository<InstitutionalCorrespondenceAttachment>,
+
+    @InjectRepository(User)
+    private users: Repository<User>,
+
+    private audit: AuditService,
+  ) {}
+
+  list() {
+    return this.repo.find({
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+  }
+
+  async get(id: string) {
+    const item = await this.repo.findOne({
+      where: { id },
+    });
+
+    if (!item) {
+      throw new NotFoundException(
+        'Correspondencia institucional no encontrada',
+      );
+    }
+
+    return item;
+  }
+
+  private normalizeDirection(value: any) {
+    const direction = String(value || '')
+      .trim()
+      .toUpperCase();
+
+    if (
+      direction !== InstitutionalCorrespondenceDirection.ENTRADA &&
+      direction !== InstitutionalCorrespondenceDirection.SALIDA
+    ) {
+      throw new BadRequestException(
+        'La dirección debe ser ENTRADA o SALIDA',
+      );
+    }
+
+    return direction as InstitutionalCorrespondenceDirection;
+  }
+
+  private normalizeStatus(value: any) {
+    if (!value) {
+      return undefined;
+    }
+
+    const status = String(value)
+      .trim()
+      .toUpperCase();
+
+    if (
+      !Object.values(InstitutionalCorrespondenceStatus).includes(
+        status as InstitutionalCorrespondenceStatus,
+      )
+    ) {
+      throw new BadRequestException(
+        'Estado de correspondencia no válido',
+      );
+    }
+
+    return status as InstitutionalCorrespondenceStatus;
+  }
+
+  private async resolveResponsible(
+    responsibleId?: string | null,
+  ) {
+    if (!responsibleId) {
+      return null;
+    }
+
+    const responsible = await this.users.findOne({
+      where: {
+        id: responsibleId,
+      },
+    });
+
+    if (!responsible) {
+      throw new NotFoundException(
+        'Responsable no encontrado',
+      );
+    }
+
+    return responsible;
+  }
+
+  async create(
+    dto: any,
+    current: any,
+  ) {
+    const subject = String(dto.subject || '').trim();
+    const sender = String(dto.sender || '').trim();
+    const recipient = String(dto.recipient || '').trim();
+
+    if (!subject || !sender || !recipient) {
+      throw new BadRequestException(
+        'Asunto, remitente y destinatario son obligatorios',
+      );
+    }
+
+    const direction = this.normalizeDirection(
+      dto.direction,
+    );
+
+    const createdBy = await this.users.findOne({
+      where: {
+        id: current.sub,
+      },
+    });
+
+    if (!createdBy) {
+      throw new NotFoundException(
+        'Usuario creador no encontrado',
+      );
+    }
+
+    const responsible = await this.resolveResponsible(
+      dto.responsibleId,
+    );
+
+    const requestedStatus = this.normalizeStatus(
+      dto.status,
+    );
+
+    const defaultStatus =
+      direction === InstitutionalCorrespondenceDirection.ENTRADA
+        ? InstitutionalCorrespondenceStatus.RECIBIDA
+        : InstitutionalCorrespondenceStatus.EN_TRAMITE;
+
+    const code =
+      `CI-${new Date().getFullYear()}-` +
+      String(Date.now()).slice(-6);
+
+    const entity = this.repo.create({
+      code,
+      referenceNumber:
+        String(dto.referenceNumber || '').trim() || null,
+      direction,
+      documentType:
+        String(dto.documentType || '').trim() || 'Oficio',
+      subject,
+      description:
+        String(dto.description || '').trim() || null,
+      sender,
+      recipient,
+      receivedDate:
+        dto.receivedDate
+          ? new Date(dto.receivedDate)
+          : null,
+      issuedDate:
+        dto.issuedDate
+          ? new Date(dto.issuedDate)
+          : null,
+      dueDate:
+        dto.dueDate
+          ? new Date(dto.dueDate)
+          : null,
+      status:
+        requestedStatus || defaultStatus,
+      responsible,
+      createdBy,
+      responseReference:
+        String(dto.responseReference || '').trim() || null,
+      responseDate:
+        dto.responseDate
+          ? new Date(dto.responseDate)
+          : null,
+      responseSummary:
+        String(dto.responseSummary || '').trim() || null,
+    } as Partial<InstitutionalCorrespondence>);
+
+    const saved = await this.repo.save(entity);
+
+    await this.audit.log(
+      current.sub,
+      'CREACION',
+      'CorrespondenciaInstitucional',
+      saved.id,
+      `Se registró ${saved.code} (${saved.direction}) - ${saved.subject}`,
+    );
+
+    return saved;
+  }
+
+  async update(
+    id: string,
+    dto: any,
+    current: any,
+  ) {
+    const item = await this.get(id);
+
+    if (dto.referenceNumber !== undefined) {
+      item.referenceNumber =
+        String(dto.referenceNumber || '').trim() || null as any;
+    }
+
+    if (dto.direction !== undefined) {
+      item.direction = this.normalizeDirection(
+        dto.direction,
+      );
+    }
+
+    if (dto.documentType !== undefined) {
+      item.documentType =
+        String(dto.documentType || '').trim() || 'Oficio';
+    }
+
+    if (dto.subject !== undefined) {
+      const subject = String(dto.subject || '').trim();
+      if (!subject) {
+        throw new BadRequestException(
+          'El asunto es obligatorio',
+        );
+      }
+      item.subject = subject;
+    }
+
+    if (dto.description !== undefined) {
+      item.description =
+        String(dto.description || '').trim() || null as any;
+    }
+
+    if (dto.sender !== undefined) {
+      const sender = String(dto.sender || '').trim();
+      if (!sender) {
+        throw new BadRequestException(
+          'El remitente es obligatorio',
+        );
+      }
+      item.sender = sender;
+    }
+
+    if (dto.recipient !== undefined) {
+      const recipient = String(dto.recipient || '').trim();
+      if (!recipient) {
+        throw new BadRequestException(
+          'El destinatario es obligatorio',
+        );
+      }
+      item.recipient = recipient;
+    }
+
+    if ('receivedDate' in dto) {
+      item.receivedDate = dto.receivedDate
+        ? new Date(dto.receivedDate)
+        : null as any;
+    }
+
+    if ('issuedDate' in dto) {
+      item.issuedDate = dto.issuedDate
+        ? new Date(dto.issuedDate)
+        : null as any;
+    }
+
+    if ('dueDate' in dto) {
+      item.dueDate = dto.dueDate
+        ? new Date(dto.dueDate)
+        : null as any;
+    }
+
+    if (dto.status !== undefined) {
+      item.status = this.normalizeStatus(dto.status)!;
+    }
+
+    if ('responsibleId' in dto) {
+      item.responsible = await this.resolveResponsible(
+        dto.responsibleId,
+      ) as any;
+    }
+
+    if (dto.responseReference !== undefined) {
+      item.responseReference =
+        String(dto.responseReference || '').trim() || null as any;
+    }
+
+    if ('responseDate' in dto) {
+      item.responseDate = dto.responseDate
+        ? new Date(dto.responseDate)
+        : null as any;
+    }
+
+    if (dto.responseSummary !== undefined) {
+      item.responseSummary =
+        String(dto.responseSummary || '').trim() || null as any;
+    }
+
+    if (
+      dto.status === undefined &&
+      (
+        dto.responseReference ||
+        dto.responseDate ||
+        dto.responseSummary
+      )
+    ) {
+      item.status =
+        InstitutionalCorrespondenceStatus.RESPONDIDA;
+    }
+
+    const saved = await this.repo.save(item);
+
+    await this.audit.log(
+      current.sub,
+      'ACTUALIZACION',
+      'CorrespondenciaInstitucional',
+      saved.id,
+      `Se actualizó ${saved.code}`,
+    );
+
+    return saved;
+  }
+
+  async addAttachment(
+    id: string,
+    file: any,
+    current: any,
+  ) {
+    const correspondence = await this.get(id);
+
+    const uploadedBy = await this.users.findOne({
+      where: {
+        id: current.sub,
+      },
+    });
+
+    if (!uploadedBy) {
+      throw new NotFoundException(
+        'Usuario no encontrado',
+      );
+    }
+
+    const entity = this.attachments.create({
+      originalName: file.originalname,
+      storedName: file.filename,
+      mimeType: file.mimetype,
+      size: file.size,
+      correspondence,
+      uploadedBy,
+    });
+
+    const saved = await this.attachments.save(
+      entity,
+    );
+
+    await this.audit.log(
+      current.sub,
+      'ADJUNTO',
+      'CorrespondenciaInstitucional',
+      id,
+      `Se adjuntó ${file.originalname}`,
+    );
+
+    return saved;
+  }
+
+  async prepareAttachmentDownload(
+    correspondenceId: string,
+    attachmentId: string,
+    current: any,
+  ) {
+    const attachment =
+      await this.attachments.findOne({
+        where: {
+          id: attachmentId,
+          correspondence: {
+            id: correspondenceId,
+          },
+        } as any,
+        relations: {
+          correspondence: true,
+        } as any,
+      });
+
+    if (!attachment) {
+      throw new NotFoundException(
+        'Archivo adjunto no encontrado',
+      );
+    }
+
+    await this.audit.log(
+      current.sub,
+      'DESCARGA',
+      'CorrespondenciaInstitucional',
+      correspondenceId,
+      `Se descargó el adjunto ${attachment.originalName}`,
+    );
+
+    return attachment;
+  }
+
+  async logAttachmentsZipDownload(
+    correspondenceId: string,
+    current: any,
+    fileCount: number,
+  ) {
+    const correspondence = await this.get(
+      correspondenceId,
+    );
+
+    await this.audit.log(
+      current.sub,
+      'DESCARGA_ZIP',
+      'CorrespondenciaInstitucional',
       correspondenceId,
       `Se descargaron ${fileCount} archivo(s) adjunto(s) en ZIP de ${correspondence.code}`,
     );

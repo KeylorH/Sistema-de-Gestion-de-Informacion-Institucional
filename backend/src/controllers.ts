@@ -65,6 +65,7 @@ import {
 import {
   AuditService,
   CorrespondenceService,
+  InstitutionalCorrespondenceService,
   FormsService,
   LinksService,
   NewsService,
@@ -605,6 +606,358 @@ export class CorrespondenceController {
     );
   }
 }
+
+/* =========================================================
+   CORRESPONDENCIA INSTITUCIONAL
+   ADMIN + EDITOR
+========================================================= */
+
+@Controller('institutional-correspondence')
+@UseGuards(
+  JwtAuthGuard,
+  RolesGuard,
+)
+@Roles(
+  Role.ADMIN,
+  Role.EDITOR,
+)
+export class InstitutionalCorrespondenceController {
+  constructor(
+    private readonly service:
+      InstitutionalCorrespondenceService,
+  ) {}
+
+  @Get()
+  list() {
+    return this.service.list();
+  }
+
+  @Get(':id')
+  get(
+    @Param('id')
+    id: string,
+  ) {
+    return this.service.get(id);
+  }
+
+  @Post()
+  create(
+    @Body()
+    body: any,
+
+    @Req()
+    request: any,
+  ) {
+    return this.service.create(
+      body,
+      request.user,
+    );
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id')
+    id: string,
+
+    @Body()
+    body: any,
+
+    @Req()
+    request: any,
+  ) {
+    return this.service.update(
+      id,
+      body,
+      request.user,
+    );
+  }
+
+  @Post(':id/attachments')
+  @UseInterceptors(
+    FileInterceptor(
+      'file',
+      {
+        storage:
+          diskStorage({
+            destination: (
+              _request,
+              _file,
+              callback,
+            ) => {
+              const directory =
+                process.env.UPLOAD_DIR ||
+                './uploads';
+
+              mkdirSync(
+                directory,
+                {
+                  recursive: true,
+                },
+              );
+
+              callback(
+                null,
+                directory,
+              );
+            },
+
+            filename: (
+              _request,
+              file,
+              callback,
+            ) => {
+              const uniqueName =
+                `${Date.now()}-` +
+                `${Math.round(
+                  Math.random() * 1e9,
+                )}` +
+                `${extname(
+                  file.originalname,
+                )}`;
+
+              callback(
+                null,
+                uniqueName,
+              );
+            },
+          }),
+      },
+    ),
+  )
+  attachment(
+    @Param('id')
+    id: string,
+
+    @UploadedFile()
+    file: any,
+
+    @Req()
+    request: any,
+  ) {
+    if (!file) {
+      throw new Error(
+        'Debe seleccionar un archivo',
+      );
+    }
+
+    return this.service.addAttachment(
+      id,
+      file,
+      request.user,
+    );
+  }
+
+  @Get(':id/attachments/download-all')
+  async downloadAllAttachments(
+    @Param('id')
+    id: string,
+
+    @Req()
+    request: any,
+
+    @Res()
+    response: any,
+  ) {
+    const correspondence =
+      await this.service.get(id);
+
+    const attachments =
+      Array.isArray(
+        correspondence.attachments,
+      )
+        ? correspondence.attachments
+        : [];
+
+    const availableFiles =
+      attachments
+        .map(
+          (
+            attachment: any,
+            index: number,
+          ) => {
+            if (
+              !attachment.storedName ||
+              !attachment.originalName
+            ) {
+              return null;
+            }
+
+            let filePath: string;
+
+            try {
+              filePath = resolveUploadPath(
+                attachment.storedName,
+              );
+            } catch {
+              return null;
+            }
+
+            if (!existsSync(filePath)) {
+              return null;
+            }
+
+            const safeName =
+              String(
+                attachment.originalName,
+              )
+                .replace(
+                  /[<>:"/\\|?*\x00-\x1F]/g,
+                  '_',
+                )
+                .trim() ||
+              `archivo-${index + 1}`;
+
+            return {
+              attachment,
+              filePath,
+              zipName:
+                `${index + 1}-` +
+                safeName,
+            };
+          },
+        )
+        .filter(Boolean) as Array<{
+          attachment: any;
+          filePath: string;
+          zipName: string;
+        }>;
+
+    if (!availableFiles.length) {
+      return response
+        .status(404)
+        .json({
+          message:
+            'No hay archivos adjuntos disponibles para descargar',
+        });
+    }
+
+    for (const file of availableFiles) {
+      await this.service
+        .prepareAttachmentDownload(
+          id,
+          file.attachment.id,
+          request.user,
+        );
+    }
+
+    await this.service
+      .logAttachmentsZipDownload(
+        id,
+        request.user,
+        availableFiles.length,
+      );
+
+    const safeCode =
+      String(
+        correspondence.code ||
+        'correspondencia',
+      )
+        .replace(
+          /[<>:"/\\|?*\x00-\x1F]/g,
+          '_',
+        )
+        .trim() ||
+      'correspondencia';
+
+    response.setHeader(
+      'Content-Type',
+      'application/zip',
+    );
+
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${safeCode}-adjuntos.zip"`,
+    );
+
+    const archive = archiver(
+      'zip',
+      {
+        zlib: {
+          level: 9,
+        },
+      },
+    );
+
+    archive.on(
+      'error',
+      (error) => {
+        console.error(
+          'Error generando ZIP de correspondencia institucional:',
+          error,
+        );
+
+        if (!response.headersSent) {
+          response
+            .status(500)
+            .json({
+              message:
+                'No se pudo generar el archivo ZIP',
+            });
+        } else {
+          response.end();
+        }
+      },
+    );
+
+    archive.pipe(response);
+
+    availableFiles.forEach(
+      (file) => {
+        archive.file(
+          file.filePath,
+          {
+            name: file.zipName,
+          },
+        );
+      },
+    );
+
+    await archive.finalize();
+  }
+
+  @Get(':id/attachments/:attachmentId/download')
+  async downloadAttachment(
+    @Param('id')
+    id: string,
+
+    @Param('attachmentId')
+    attachmentId: string,
+
+    @Req()
+    request: any,
+
+    @Res()
+    response: any,
+  ) {
+    const attachment =
+      await this.service
+        .prepareAttachmentDownload(
+          id,
+          attachmentId,
+          request.user,
+        );
+
+    const filePath =
+      resolveUploadPath(
+        attachment.storedName,
+      );
+
+    if (!existsSync(filePath)) {
+      return response
+        .status(404)
+        .json({
+          message:
+            'El archivo físico no se encuentra disponible',
+        });
+    }
+
+    return response.download(
+      filePath,
+      attachment.originalName,
+    );
+  }
+}
+
 
 /* =========================================================
    REPOSITORIO

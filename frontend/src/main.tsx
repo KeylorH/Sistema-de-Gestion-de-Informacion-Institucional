@@ -37,11 +37,14 @@ import {
   ChangePassword,
   CorrespondenceDetail,
   CorrespondenceList,
+  InstitutionalCorrespondenceDetail,
+  InstitutionalCorrespondenceList,
   Dashboard,
   Forms,
   Links,
   Login,
   NewCorrespondence,
+  NewInstitutionalCorrespondence,
   News,
   NewProcedure,
   EditProcedure,
@@ -141,12 +144,12 @@ function App() {
         />
 
         {/* =================================================
-            CORRESPONDENCIA
+            ASIGNACIONES
             ADMIN + EDITOR
         ================================================= */}
 
         <Route
-          path="correspondencia"
+          path="asignaciones"
           element={
             <RoleGuard
               roles={[
@@ -160,7 +163,7 @@ function App() {
         />
 
         <Route
-          path="correspondencia/nueva"
+          path="asignaciones/nueva"
           element={
             <RoleGuard
               roles={[
@@ -174,7 +177,7 @@ function App() {
         />
 
         <Route
-          path="correspondencia/:id"
+          path="asignaciones/:id"
           element={
             <RoleGuard
               roles={[
@@ -183,6 +186,54 @@ function App() {
               ]}
             >
               <CorrespondenceDetail />
+            </RoleGuard>
+          }
+        />
+
+
+        {/* =================================================
+            CORRESPONDENCIA INSTITUCIONAL
+            ADMIN + EDITOR
+        ================================================= */}
+
+        <Route
+          path="correspondencia"
+          element={
+            <RoleGuard
+              roles={[
+                ROLES.ADMIN,
+                ROLES.EDITOR,
+              ]}
+            >
+              <InstitutionalCorrespondenceList />
+            </RoleGuard>
+          }
+        />
+
+        <Route
+          path="correspondencia/nueva"
+          element={
+            <RoleGuard
+              roles={[
+                ROLES.ADMIN,
+                ROLES.EDITOR,
+              ]}
+            >
+              <NewInstitutionalCorrespondence />
+            </RoleGuard>
+          }
+        />
+
+        <Route
+          path="correspondencia/:id"
+          element={
+            <RoleGuard
+              roles={[
+                ROLES.ADMIN,
+                ROLES.EDITOR,
+              ]}
+            >
+              <InstitutionalCorrespondenceDetail />
             </RoleGuard>
           }
         />
