@@ -897,7 +897,7 @@ export function Dashboard() {
         {canViewCorrespondence && (
           <Card>
             <b>
-              Correspondencia
+              Asignaciones
             </b>
 
             <strong>
@@ -905,7 +905,7 @@ export function Dashboard() {
             </strong>
 
             <span>
-              Pendientes y seguimiento
+              Actividades en seguimiento
             </span>
           </Card>
         )}
@@ -969,7 +969,7 @@ export function Dashboard() {
         {canViewCorrespondence && (
           <Card>
             <h2>
-              Mis pendientes
+              Mis asignaciones
             </h2>
 
             {corr.length ? (
@@ -981,7 +981,7 @@ export function Dashboard() {
                     key={x.id}
                   >
                     <Link
-                      to={`/correspondencia/${x.id}`}
+                      to={`/asignaciones/${x.id}`}
                     >
                       {x.subject}
                     </Link>
@@ -1002,7 +1002,7 @@ export function Dashboard() {
                   </div>
                 ))
             ) : (
-              <Empty text="No hay correspondencia pendiente." />
+              <Empty text="No hay asignaciones pendientes." />
             )}
           </Card>
         )}
@@ -1041,7 +1041,7 @@ export function Dashboard() {
 
 /* =========================================================
 
-   CORRESPONDENCIA - LISTA
+   ASIGNACIONES - LISTA
 
 \========================================================= */
 
@@ -1079,17 +1079,17 @@ export function CorrespondenceList() {
 
         <div>
 
-          <h1>Correspondencia</h1>
+          <h1>Asignaciones</h1>
 
-          <p>Documentos que requieren seguimiento</p>
+          <p>Actividades y requerimientos asignados para seguimiento</p>
 
         </div>
 
 
 
-        <Link className="btn" to="/correspondencia/nueva">
+        <Link className="btn" to="/asignaciones/nueva">
 
-          + Nueva correspondencia
+          + Nueva asignación
 
         </Link>
 
@@ -1191,7 +1191,7 @@ export function CorrespondenceList() {
 
                 <td>
 
-                  <Link to={`/correspondencia/${x.id}`}>
+                  <Link to={`/asignaciones/${x.id}`}>
 
                     {x.subject}
 
@@ -1255,7 +1255,7 @@ export function CorrespondenceList() {
 
                 <td>
 
-                  <Link to={`/correspondencia/${x.id}`}>
+                  <Link to={`/asignaciones/${x.id}`}>
 
                     Ver
 
@@ -1285,7 +1285,7 @@ export function CorrespondenceList() {
 
 /* =========================================================
 
-   NUEVA CORRESPONDENCIA
+   NUEVA ASIGNACIÓN
 
 \========================================================= */
 
@@ -1375,7 +1375,7 @@ export function NewCorrespondence() {
       }
 
       nav(
-        `/correspondencia/${correspondence.id}`,
+        `/asignaciones/${correspondence.id}`,
       );
     } catch (error) {
       console.error(
@@ -1384,7 +1384,7 @@ export function NewCorrespondence() {
       );
 
       alert(
-        'No se pudo crear la correspondencia o subir alguno de los archivos.',
+        'No se pudo crear la asignación o subir alguno de los archivos.',
       );
     } finally {
       setSaving(false);
@@ -1407,11 +1407,11 @@ export function NewCorrespondence() {
       <div className="titlebar">
         <div>
           <h1>
-            Nueva correspondencia
+            Nueva asignación
           </h1>
 
           <p>
-            Registra la correspondencia y, si lo necesitas, adjunta uno o varios archivos desde el inicio.
+            Registra una actividad o requerimiento, asigna un responsable y adjunta los archivos necesarios.
           </p>
         </div>
 
@@ -1419,7 +1419,7 @@ export function NewCorrespondence() {
           type="button"
           className="btn secondary"
           onClick={() =>
-            nav('/correspondencia')
+            nav('/asignaciones')
           }
         >
           ← Volver
@@ -1636,7 +1636,7 @@ export function NewCorrespondence() {
               className="btn secondary"
               onClick={() =>
                 nav(
-                  '/correspondencia',
+                  '/asignaciones',
                 )
               }
               disabled={saving}
@@ -1651,7 +1651,7 @@ export function NewCorrespondence() {
             >
               {saving
                 ? 'Creando y subiendo...'
-                : 'Crear correspondencia'}
+                : 'Crear asignación'}
             </button>
           </div>
         </form>
@@ -1663,7 +1663,7 @@ export function NewCorrespondence() {
 
 /* =========================================================
 
-   DETALLE CORRESPONDENCIA
+   DETALLE ASIGNACIÓN
 
 \========================================================= */
 
@@ -1997,7 +1997,7 @@ export function CorrespondenceDetail() {
             className="btn secondary correspondence-back-button"
             onClick={() =>
               nav(
-                '/correspondencia',
+                '/asignaciones',
               )
             }
           >
@@ -2005,7 +2005,7 @@ export function CorrespondenceDetail() {
           </button>
 
           <h1>
-            Detalle de correspondencia
+            Detalle de asignación
           </h1>
 
           <h2>
@@ -2163,7 +2163,7 @@ export function CorrespondenceDetail() {
             </h2>
 
             <p>
-              Adjunta uno o varios documentos de respaldo o archivos relacionados con esta correspondencia.
+              Adjunta uno o varios documentos de respaldo o archivos relacionados con esta asignación.
             </p>
           </div>
 
@@ -2346,7 +2346,7 @@ export function CorrespondenceDetail() {
             )}
           </div>
         ) : (
-          <Empty text="Esta correspondencia todavía no tiene archivos adjuntos." />
+          <Empty text="Esta asignación todavía no tiene archivos adjuntos." />
         )}
       </Card>
 
@@ -2372,6 +2372,1716 @@ export function CorrespondenceDetail() {
     </>
   );
 }
+
+
+
+/* =========================================================
+   CORRESPONDENCIA INSTITUCIONAL - LISTA
+========================================================= */
+
+const INSTITUTIONAL_CORRESPONDENCE_STATUSES = [
+  'RECIBIDA',
+  'ASIGNADA',
+  'EN_TRAMITE',
+  'RESPONDIDA',
+  'CERRADA',
+  'VENCIDA',
+];
+
+function institutionalStatusLabel(value?: string) {
+  return String(value || '')
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function institutionalStatusTone(
+  status?: string,
+): 'red' | 'green' | 'blue' | undefined {
+  if (status === 'VENCIDA') {
+    return 'red';
+  }
+
+  if (
+    status === 'RESPONDIDA' ||
+    status === 'CERRADA'
+  ) {
+    return 'green';
+  }
+
+  return 'blue';
+}
+
+export function InstitutionalCorrespondenceList() {
+  const [data, setData] =
+    useState<any[]>([]);
+
+  const [search, setSearch] =
+    useState('');
+
+  const [direction, setDirection] =
+    useState('TODAS');
+
+  const [status, setStatus] =
+    useState('TODOS');
+
+  useEffect(() => {
+    api
+      .get('/institutional-correspondence')
+      .then((response) => {
+        setData(response.data);
+      })
+      .catch((error) => {
+        console.error(
+          'Error cargando correspondencia institucional:',
+          error,
+        );
+      });
+  }, []);
+
+  const filtered = data.filter((item) => {
+    const query =
+      search.trim().toLowerCase();
+
+    const matchesText =
+      !query ||
+      [
+        item.code,
+        item.referenceNumber,
+        item.subject,
+        item.sender,
+        item.recipient,
+        item.documentType,
+        item.responsible?.name,
+      ].some((value) =>
+        String(value ?? '')
+          .toLowerCase()
+          .includes(query),
+      );
+
+    const matchesDirection =
+      direction === 'TODAS' ||
+      item.direction === direction;
+
+    const matchesStatus =
+      status === 'TODOS' ||
+      item.status === status;
+
+    return (
+      matchesText &&
+      matchesDirection &&
+      matchesStatus
+    );
+  });
+
+  return (
+    <>
+      <div className="titlebar">
+        <div>
+          <h1>
+            Correspondencia
+          </h1>
+
+          <p>
+            Registro y seguimiento de oficios, memorandos y comunicaciones institucionales de entrada y salida.
+          </p>
+        </div>
+
+        <Link
+          className="btn"
+          to="/correspondencia/nueva"
+        >
+          + Nueva correspondencia
+        </Link>
+      </div>
+
+      <div className="stats mini">
+        <Card>
+          <strong>
+            {data.length}
+          </strong>
+          <span>Total</span>
+        </Card>
+
+        <Card>
+          <strong>
+            {
+              data.filter(
+                (item) =>
+                  item.direction ===
+                  'ENTRADA',
+              ).length
+            }
+          </strong>
+          <span>Entradas</span>
+        </Card>
+
+        <Card>
+          <strong>
+            {
+              data.filter(
+                (item) =>
+                  item.direction ===
+                  'SALIDA',
+              ).length
+            }
+          </strong>
+          <span>Salidas</span>
+        </Card>
+
+        <Card>
+          <strong>
+            {
+              data.filter(
+                (item) =>
+                  item.status ===
+                    'RESPONDIDA' ||
+                  item.status ===
+                    'CERRADA',
+              ).length
+            }
+          </strong>
+          <span>Atendidas</span>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="repository-toolbar">
+          <input
+            type="search"
+            value={search}
+            onChange={(event) =>
+              setSearch(
+                event.target.value,
+              )
+            }
+            placeholder="Buscar por código, oficio, asunto, remitente o destinatario..."
+          />
+
+          <select
+            value={direction}
+            onChange={(event) =>
+              setDirection(
+                event.target.value,
+              )
+            }
+          >
+            <option value="TODAS">
+              Todas las direcciones
+            </option>
+            <option value="ENTRADA">
+              Entrada
+            </option>
+            <option value="SALIDA">
+              Salida
+            </option>
+          </select>
+
+          <select
+            value={status}
+            onChange={(event) =>
+              setStatus(
+                event.target.value,
+              )
+            }
+          >
+            <option value="TODOS">
+              Todos los estados
+            </option>
+
+            {INSTITUTIONAL_CORRESPONDENCE_STATUSES.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {institutionalStatusLabel(
+                    item,
+                  )}
+                </option>
+              ),
+            )}
+          </select>
+
+          <span>
+            {filtered.length}{' '}
+            registro(s)
+          </span>
+        </div>
+      </Card>
+
+      <Card>
+        {filtered.length ? (
+          <table className="repository-table">
+            <thead>
+              <tr>
+                <th>Documento</th>
+                <th>Dirección</th>
+                <th>Remitente</th>
+                <th>Destinatario</th>
+                <th>Responsable</th>
+                <th>Fecha límite</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filtered.map(
+                (item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <Link
+                        to={`/correspondencia/${item.id}`}
+                      >
+                        <strong>
+                          {item.subject}
+                        </strong>
+                      </Link>
+
+                      <small>
+                        {item.referenceNumber ||
+                          item.code}
+                      </small>
+                    </td>
+
+                    <td>
+                      <Badge
+                        tone={
+                          item.direction ===
+                          'ENTRADA'
+                            ? 'blue'
+                            : 'green'
+                        }
+                      >
+                        {item.direction}
+                      </Badge>
+                    </td>
+
+                    <td>
+                      {item.sender || '-'}
+                    </td>
+
+                    <td>
+                      {item.recipient || '-'}
+                    </td>
+
+                    <td>
+                      {item.responsible
+                        ?.name || '-'}
+                    </td>
+
+                    <td>
+                      {item.dueDate
+                        ? new Date(
+                            item.dueDate,
+                          ).toLocaleDateString()
+                        : '-'}
+                    </td>
+
+                    <td>
+                      <Badge
+                        tone={institutionalStatusTone(
+                          item.status,
+                        )}
+                      >
+                        {institutionalStatusLabel(
+                          item.status,
+                        )}
+                      </Badge>
+                    </td>
+
+                    <td>
+                      <Link
+                        to={`/correspondencia/${item.id}`}
+                      >
+                        Ver
+                      </Link>
+                    </td>
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        ) : (
+          <Empty text="No se encontraron registros de correspondencia." />
+        )}
+      </Card>
+    </>
+  );
+}
+
+
+/* =========================================================
+   NUEVA CORRESPONDENCIA INSTITUCIONAL
+========================================================= */
+
+export function NewInstitutionalCorrespondence() {
+  const nav =
+    useNavigate();
+
+  const { user } =
+    useAuth();
+
+  const roles =
+    user?.roles || [];
+
+  const isAdmin =
+    roles.includes('ADMIN');
+
+  const currentUserId =
+    (user as any)?.id ||
+    (user as any)?.sub ||
+    '';
+
+  const [users, setUsers] =
+    useState<any[]>([]);
+
+  const [files, setFiles] =
+    useState<File[]>([]);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [form, setForm] =
+    useState({
+      direction: 'ENTRADA',
+      referenceNumber: '',
+      documentType: 'Oficio',
+      subject: '',
+      description: '',
+      sender: '',
+      recipient: '',
+      receivedDate: '',
+      issuedDate: '',
+      dueDate: '',
+      responsibleId:
+        isAdmin
+          ? ''
+          : currentUserId,
+    });
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setForm((current) => ({
+        ...current,
+        responsibleId:
+          current.responsibleId ||
+          currentUserId,
+      }));
+
+      return;
+    }
+
+    api
+      .get('/users')
+      .then((response) => {
+        setUsers(
+          response.data.filter(
+            (item: any) =>
+              item.active &&
+              !item.deletedAt,
+          ),
+        );
+      })
+      .catch((error) => {
+        console.error(
+          'Error cargando responsables:',
+          error,
+        );
+      });
+  }, [
+    isAdmin,
+    currentUserId,
+  ]);
+
+  const submit = async (
+    event:
+      React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    try {
+      setSaving(true);
+
+      const payload = {
+        ...form,
+        responsibleId:
+          form.responsibleId ||
+          null,
+        receivedDate:
+          form.direction ===
+            'ENTRADA' &&
+          form.receivedDate
+            ? form.receivedDate
+            : null,
+        issuedDate:
+          form.direction ===
+            'SALIDA' &&
+          form.issuedDate
+            ? form.issuedDate
+            : null,
+        dueDate:
+          form.dueDate || null,
+      };
+
+      const response =
+        await api.post(
+          '/institutional-correspondence',
+          payload,
+        );
+
+      const created =
+        response.data;
+
+      if (
+        files.length &&
+        created?.id
+      ) {
+        for (
+          const selectedFile
+          of files
+        ) {
+          const upload =
+            new FormData();
+
+          upload.append(
+            'file',
+            selectedFile,
+          );
+
+          await api.post(
+            `/institutional-correspondence/${created.id}/attachments`,
+            upload,
+            {
+              headers: {
+                'Content-Type':
+                  'multipart/form-data',
+              },
+            },
+          );
+        }
+      }
+
+      nav(
+        `/correspondencia/${created.id}`,
+      );
+    } catch (error: any) {
+      console.error(
+        'Error creando correspondencia institucional:',
+        error,
+      );
+
+      alert(
+        error?.response?.data
+          ?.message ||
+          'No se pudo registrar la correspondencia.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeSelectedFile = (
+    index: number,
+  ) => {
+    setFiles((current) =>
+      current.filter(
+        (_file, fileIndex) =>
+          fileIndex !== index,
+      ),
+    );
+  };
+
+  return (
+    <>
+      <div className="titlebar">
+        <div>
+          <h1>
+            Nueva correspondencia
+          </h1>
+
+          <p>
+            Registra una comunicación institucional de entrada o salida y adjunta los documentos relacionados.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={() =>
+            nav('/correspondencia')
+          }
+        >
+          ← Volver
+        </button>
+      </div>
+
+      <Card>
+        <form
+          className="form"
+          onSubmit={submit}
+        >
+          <label>
+            Dirección
+            <select
+              value={
+                form.direction
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  direction:
+                    event.target
+                      .value,
+                })
+              }
+            >
+              <option value="ENTRADA">
+                Entrada
+              </option>
+              <option value="SALIDA">
+                Salida
+              </option>
+            </select>
+          </label>
+
+          <label>
+            Tipo de documento
+            <select
+              value={
+                form.documentType
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  documentType:
+                    event.target
+                      .value,
+                })
+              }
+            >
+              <option value="Oficio">
+                Oficio
+              </option>
+              <option value="Memorando">
+                Memorando
+              </option>
+              <option value="Circular">
+                Circular
+              </option>
+              <option value="Nota">
+                Nota
+              </option>
+              <option value="Otro">
+                Otro
+              </option>
+            </select>
+          </label>
+
+          <label>
+            Número / referencia
+            <input
+              value={
+                form.referenceNumber
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  referenceNumber:
+                    event.target
+                      .value,
+                })
+              }
+              placeholder="Ej. CTSJ-OF-123-2026"
+            />
+          </label>
+
+          <label>
+            Responsable
+            {isAdmin ? (
+              <select
+                value={
+                  form.responsibleId
+                }
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    responsibleId:
+                      event.target
+                        .value,
+                  })
+                }
+              >
+                <option value="">
+                  Sin asignar
+                </option>
+
+                {users.map(
+                  (item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                    >
+                      {item.name}
+                    </option>
+                  ),
+                )}
+              </select>
+            ) : (
+              <>
+                <input
+                  value={
+                    user?.name ||
+                    'Usuario actual'
+                  }
+                  disabled
+                />
+
+                <small>
+                  La correspondencia quedará asignada inicialmente a su usuario.
+                </small>
+              </>
+            )}
+          </label>
+
+          <label className="full">
+            Asunto
+            <input
+              required
+              value={
+                form.subject
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  subject:
+                    event.target
+                      .value,
+                })
+              }
+            />
+          </label>
+
+          <label>
+            Remitente
+            <input
+              required
+              value={
+                form.sender
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  sender:
+                    event.target
+                      .value,
+                })
+              }
+              placeholder="Persona, oficina o institución"
+            />
+          </label>
+
+          <label>
+            Destinatario
+            <input
+              required
+              value={
+                form.recipient
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  recipient:
+                    event.target
+                      .value,
+                })
+              }
+              placeholder="Persona, oficina o institución"
+            />
+          </label>
+
+          {form.direction ===
+            'ENTRADA' ? (
+            <label>
+              Fecha de recepción
+              <input
+                type="date"
+                value={
+                  form.receivedDate
+                }
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    receivedDate:
+                      event.target
+                        .value,
+                  })
+                }
+              />
+            </label>
+          ) : (
+            <label>
+              Fecha de emisión / envío
+              <input
+                type="date"
+                value={
+                  form.issuedDate
+                }
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    issuedDate:
+                      event.target
+                        .value,
+                  })
+                }
+              />
+            </label>
+          )}
+
+          <label>
+            Fecha límite de atención
+            <input
+              type="date"
+              value={
+                form.dueDate
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  dueDate:
+                    event.target
+                      .value,
+                })
+              }
+            />
+          </label>
+
+          <label className="full">
+            Descripción / observaciones
+            <textarea
+              value={
+                form.description
+              }
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  description:
+                    event.target
+                      .value,
+                })
+              }
+            />
+          </label>
+
+          <div className="full correspondence-create-attachments">
+            <div className="correspondence-create-attachments-header">
+              <div>
+                <strong>
+                  Archivos adjuntos
+                </strong>
+
+                <p>
+                  Puedes seleccionar uno o varios archivos. No hay restricción de extensión.
+                </p>
+              </div>
+
+              {files.length > 0 && (
+                <Badge tone="blue">
+                  {files.length}{' '}
+                  seleccionado(s)
+                </Badge>
+              )}
+            </div>
+
+            <input
+              type="file"
+              multiple
+              onChange={(event) =>
+                setFiles(
+                  Array.from(
+                    event.target
+                      .files || [],
+                  ),
+                )
+              }
+            />
+
+            {files.length > 0 && (
+              <div className="correspondence-create-file-list">
+                {files.map(
+                  (
+                    selectedFile,
+                    index,
+                  ) => (
+                    <div
+                      className="correspondence-create-file-item"
+                      key={`${selectedFile.name}-${selectedFile.size}-${index}`}
+                    >
+                      <div>
+                        <strong>
+                          {selectedFile.name}
+                        </strong>
+
+                        <small>
+                          {formatFileSize(
+                            selectedFile.size,
+                          )}
+                        </small>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="procedure-remove-step"
+                        onClick={() =>
+                          removeSelectedFile(
+                            index,
+                          )
+                        }
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="full correspondence-create-actions">
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() =>
+                nav(
+                  '/correspondencia',
+                )
+              }
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+
+            <button
+              className="btn"
+              type="submit"
+              disabled={saving}
+            >
+              {saving
+                ? 'Registrando...'
+                : 'Registrar correspondencia'}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </>
+  );
+}
+
+
+/* =========================================================
+   DETALLE DE CORRESPONDENCIA INSTITUCIONAL
+========================================================= */
+
+export function InstitutionalCorrespondenceDetail() {
+  const { id } =
+    useParams();
+
+  const nav =
+    useNavigate();
+
+  const { user } =
+    useAuth();
+
+  const roles =
+    user?.roles || [];
+
+  const isAdmin =
+    roles.includes('ADMIN');
+
+  const [item, setItem] =
+    useState<any>();
+
+  const [users, setUsers] =
+    useState<any[]>([]);
+
+  const [files, setFiles] =
+    useState<File[]>([]);
+
+  const [uploading, setUploading] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [downloadingId, setDownloadingId] =
+    useState<string | null>(
+      null,
+    );
+
+  const [downloadingAll, setDownloadingAll] =
+    useState(false);
+
+  const [status, setStatus] =
+    useState('');
+
+  const [responsibleId, setResponsibleId] =
+    useState('');
+
+  const [responseReference, setResponseReference] =
+    useState('');
+
+  const [responseDate, setResponseDate] =
+    useState('');
+
+  const [responseSummary, setResponseSummary] =
+    useState('');
+
+  const load = () =>
+    api
+      .get(
+        `/institutional-correspondence/${id}`,
+      )
+      .then((response) => {
+        const value =
+          response.data;
+
+        setItem(value);
+
+        setStatus(
+          value.status || 'RECIBIDA',
+        );
+
+        setResponsibleId(
+          value.responsible
+            ?.id || '',
+        );
+
+        setResponseReference(
+          value.responseReference ||
+            '',
+        );
+
+        setResponseDate(
+          value.responseDate
+            ? String(
+                value.responseDate,
+              ).slice(0, 10)
+            : '',
+        );
+
+        setResponseSummary(
+          value.responseSummary ||
+            '',
+        );
+      })
+      .catch((error) => {
+        console.error(
+          'Error cargando correspondencia institucional:',
+          error,
+        );
+      });
+
+  useEffect(() => {
+    void load();
+  }, [id]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
+    api
+      .get('/users')
+      .then((response) => {
+        setUsers(
+          response.data.filter(
+            (entry: any) =>
+              entry.active &&
+              !entry.deletedAt,
+          ),
+        );
+      })
+      .catch((error) => {
+        console.error(
+          'Error cargando responsables:',
+          error,
+        );
+      });
+  }, [isAdmin]);
+
+  if (!item) {
+    return (
+      <Empty text="Cargando correspondencia..." />
+    );
+  }
+
+  const attachments =
+    Array.isArray(
+      item.attachments,
+    )
+      ? [...item.attachments].sort(
+          (a: any, b: any) =>
+            new Date(
+              b.createdAt,
+            ).getTime() -
+            new Date(
+              a.createdAt,
+            ).getTime(),
+        )
+      : [];
+
+  const saveTracking =
+    async () => {
+      try {
+        setSaving(true);
+
+        const payload: any = {
+          status,
+          responseReference:
+            responseReference.trim() ||
+            null,
+          responseDate:
+            responseDate || null,
+          responseSummary:
+            responseSummary.trim() ||
+            null,
+        };
+
+        if (isAdmin) {
+          payload.responsibleId =
+            responsibleId ||
+            null;
+        }
+
+        await api.patch(
+          `/institutional-correspondence/${id}`,
+          payload,
+        );
+
+        await load();
+      } catch (error: any) {
+        console.error(
+          'Error actualizando seguimiento:',
+          error,
+        );
+
+        alert(
+          error?.response?.data
+            ?.message ||
+            'No se pudo actualizar la correspondencia.',
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+  const uploadAttachments =
+    async (
+      event:
+        React.FormEvent<HTMLFormElement>,
+    ) => {
+      event.preventDefault();
+
+      if (!files.length) {
+        alert(
+          'Seleccione al menos un archivo.',
+        );
+        return;
+      }
+
+      try {
+        setUploading(true);
+
+        for (
+          const selectedFile
+          of files
+        ) {
+          const form =
+            new FormData();
+
+          form.append(
+            'file',
+            selectedFile,
+          );
+
+          await api.post(
+            `/institutional-correspondence/${id}/attachments`,
+            form,
+            {
+              headers: {
+                'Content-Type':
+                  'multipart/form-data',
+              },
+            },
+          );
+        }
+
+        setFiles([]);
+
+        const input =
+          document.getElementById(
+            'institutional-correspondence-attachment-input',
+          ) as HTMLInputElement | null;
+
+        if (input) {
+          input.value = '';
+        }
+
+        await load();
+      } catch (error) {
+        console.error(
+          'Error adjuntando archivos:',
+          error,
+        );
+
+        alert(
+          'No se pudieron adjuntar todos los archivos.',
+        );
+      } finally {
+        setUploading(false);
+      }
+    };
+
+  const downloadAttachment =
+    async (
+      attachment: any,
+    ) => {
+      try {
+        setDownloadingId(
+          attachment.id,
+        );
+
+        const response =
+          await api.get(
+            `/institutional-correspondence/${id}/attachments/${attachment.id}/download`,
+            {
+              responseType:
+                'blob',
+            },
+          );
+
+        const url =
+          URL.createObjectURL(
+            response.data,
+          );
+
+        const anchor =
+          document.createElement(
+            'a',
+          );
+
+        anchor.href = url;
+
+        anchor.download =
+          attachment.originalName ||
+          'archivo';
+
+        document.body
+          .appendChild(
+            anchor,
+          );
+
+        anchor.click();
+        anchor.remove();
+
+        URL.revokeObjectURL(
+          url,
+        );
+      } catch (error) {
+        console.error(
+          'Error descargando adjunto:',
+          error,
+        );
+
+        alert(
+          'No se pudo descargar el archivo.',
+        );
+      } finally {
+        setDownloadingId(
+          null,
+        );
+      }
+    };
+
+  const downloadAllAttachments =
+    async () => {
+      try {
+        setDownloadingAll(
+          true,
+        );
+
+        const response =
+          await api.get(
+            `/institutional-correspondence/${id}/attachments/download-all`,
+            {
+              responseType:
+                'blob',
+            },
+          );
+
+        const url =
+          URL.createObjectURL(
+            response.data,
+          );
+
+        const anchor =
+          document.createElement(
+            'a',
+          );
+
+        anchor.href = url;
+
+        anchor.download =
+          `${item.code || 'correspondencia'}-adjuntos.zip`;
+
+        document.body
+          .appendChild(
+            anchor,
+          );
+
+        anchor.click();
+        anchor.remove();
+
+        URL.revokeObjectURL(
+          url,
+        );
+      } catch (error) {
+        console.error(
+          'Error descargando ZIP:',
+          error,
+        );
+
+        alert(
+          'No se pudieron descargar todos los archivos.',
+        );
+      } finally {
+        setDownloadingAll(
+          false,
+        );
+      }
+    };
+
+  return (
+    <>
+      <div className="titlebar">
+        <div>
+          <button
+            type="button"
+            className="btn secondary correspondence-back-button"
+            onClick={() =>
+              nav(
+                '/correspondencia',
+              )
+            }
+          >
+            ← Volver
+          </button>
+
+          <small className="procedure-code">
+            {item.code}
+          </small>
+
+          <h1>
+            {item.subject}
+          </h1>
+
+          <p>
+            {item.referenceNumber ||
+              'Sin número de referencia'}
+          </p>
+        </div>
+
+        <div className="correspondence-detail-actions">
+          {attachments.length >
+            0 && (
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={
+                downloadingAll
+              }
+              onClick={() =>
+                void downloadAllAttachments()
+              }
+            >
+              {downloadingAll
+                ? 'Preparando ZIP...'
+                : 'Descargar todos (.zip)'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid2">
+        <Card>
+          <h2>
+            Información del documento
+          </h2>
+
+          <p>
+            <b>Dirección:</b>{' '}
+            <Badge
+              tone={
+                item.direction ===
+                'ENTRADA'
+                  ? 'blue'
+                  : 'green'
+              }
+            >
+              {item.direction}
+            </Badge>
+          </p>
+
+          <p>
+            <b>Tipo:</b>{' '}
+            {item.documentType ||
+              '-'}
+          </p>
+
+          <p>
+            <b>Remitente:</b>{' '}
+            {item.sender || '-'}
+          </p>
+
+          <p>
+            <b>Destinatario:</b>{' '}
+            {item.recipient || '-'}
+          </p>
+
+          <p>
+            <b>Fecha de recepción:</b>{' '}
+            {item.receivedDate
+              ? new Date(
+                  item.receivedDate,
+                ).toLocaleDateString()
+              : '-'}
+          </p>
+
+          <p>
+            <b>Fecha de emisión:</b>{' '}
+            {item.issuedDate
+              ? new Date(
+                  item.issuedDate,
+                ).toLocaleDateString()
+              : '-'}
+          </p>
+
+          <p>
+            <b>Fecha límite:</b>{' '}
+            {item.dueDate
+              ? new Date(
+                  item.dueDate,
+                ).toLocaleDateString()
+              : '-'}
+          </p>
+
+          <p>
+            <b>Registrado por:</b>{' '}
+            {item.createdBy
+              ?.name || '-'}
+          </p>
+
+          <h3>
+            Descripción / observaciones
+          </h3>
+
+          <p>
+            {item.description ||
+              'Sin observaciones.'}
+          </p>
+        </Card>
+
+        <Card>
+          <h2>
+            Seguimiento
+          </h2>
+
+          <div className="form">
+            <label>
+              Estado
+              <select
+                value={status}
+                onChange={(event) =>
+                  setStatus(
+                    event.target.value,
+                  )
+                }
+              >
+                {INSTITUTIONAL_CORRESPONDENCE_STATUSES.map(
+                  (value) => (
+                    <option
+                      key={value}
+                      value={value}
+                    >
+                      {institutionalStatusLabel(
+                        value,
+                      )}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <label>
+              Responsable
+              {isAdmin ? (
+                <select
+                  value={
+                    responsibleId
+                  }
+                  onChange={(event) =>
+                    setResponsibleId(
+                      event.target.value,
+                    )
+                  }
+                >
+                  <option value="">
+                    Sin asignar
+                  </option>
+
+                  {users.map(
+                    (entry) => (
+                      <option
+                        key={entry.id}
+                        value={entry.id}
+                      >
+                        {entry.name}
+                      </option>
+                    ),
+                  )}
+                </select>
+              ) : (
+                <input
+                  disabled
+                  value={
+                    item.responsible
+                      ?.name ||
+                    'Sin asignar'
+                  }
+                />
+              )}
+            </label>
+
+            <label>
+              Oficio / referencia de respuesta
+              <input
+                value={
+                  responseReference
+                }
+                onChange={(event) =>
+                  setResponseReference(
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Ej. CTSJ-OF-200-2026"
+              />
+            </label>
+
+            <label>
+              Fecha de respuesta
+              <input
+                type="date"
+                value={
+                  responseDate
+                }
+                onChange={(event) =>
+                  setResponseDate(
+                    event.target
+                      .value,
+                  )
+                }
+              />
+            </label>
+
+            <label className="full">
+              Respuesta / solución
+              <textarea
+                value={
+                  responseSummary
+                }
+                onChange={(event) =>
+                  setResponseSummary(
+                    event.target
+                      .value,
+                  )
+                }
+                placeholder="Describa cómo se atendió o respondió la correspondencia..."
+              />
+            </label>
+
+            <div className="full correspondence-create-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={saving}
+                onClick={() =>
+                  void saveTracking()
+                }
+              >
+                {saving
+                  ? 'Guardando...'
+                  : 'Guardar seguimiento'}
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="correspondence-attachments-header">
+          <div>
+            <h2>
+              Archivos adjuntos
+            </h2>
+
+            <p>
+              Documentos asociados a esta correspondencia institucional.
+            </p>
+          </div>
+
+          <Badge tone="blue">
+            {attachments.length}{' '}
+            archivo(s)
+          </Badge>
+        </div>
+
+        <form
+          className="correspondence-upload-form correspondence-upload-form-multiple"
+          onSubmit={
+            uploadAttachments
+          }
+        >
+          <label>
+            Seleccionar archivos
+            <input
+              id="institutional-correspondence-attachment-input"
+              type="file"
+              multiple
+              onChange={(event) =>
+                setFiles(
+                  Array.from(
+                    event.target
+                      .files || [],
+                  ),
+                )
+              }
+            />
+          </label>
+
+          <div className="correspondence-multiple-summary">
+            {files.length ? (
+              <>
+                <strong>
+                  {files.length}{' '}
+                  archivo(s) seleccionado(s)
+                </strong>
+
+                <small>
+                  Tamaño total:{' '}
+                  {formatFileSize(
+                    files.reduce(
+                      (
+                        total,
+                        selectedFile,
+                      ) =>
+                        total +
+                        selectedFile.size,
+                      0,
+                    ),
+                  )}
+                </small>
+              </>
+            ) : (
+              <small>
+                Aún no has seleccionado archivos.
+              </small>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="btn"
+            disabled={
+              uploading ||
+              !files.length
+            }
+          >
+            {uploading
+              ? 'Adjuntando...'
+              : 'Adjuntar archivos'}
+          </button>
+        </form>
+
+        {attachments.length ? (
+          <div className="correspondence-attachment-list">
+            {attachments.map(
+              (attachment: any) => (
+                <div
+                  className="correspondence-attachment-item"
+                  key={
+                    attachment.id
+                  }
+                >
+                  <div className="correspondence-attachment-info">
+                    <strong>
+                      {attachment.originalName}
+                    </strong>
+
+                    <div>
+                      <span>
+                        {formatFileSize(
+                          attachment.size,
+                        )}
+                      </span>
+
+                      <span>
+                        {attachment.mimeType ||
+                          'Tipo desconocido'}
+                      </span>
+
+                      <span>
+                        {attachment.createdAt
+                          ? new Date(
+                              attachment.createdAt,
+                            ).toLocaleString()
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    disabled={
+                      downloadingId ===
+                      attachment.id
+                    }
+                    onClick={() =>
+                      void downloadAttachment(
+                        attachment,
+                      )
+                    }
+                  >
+                    {downloadingId ===
+                    attachment.id
+                      ? 'Descargando...'
+                      : 'Descargar'}
+                  </button>
+                </div>
+              ),
+            )}
+          </div>
+        ) : (
+          <Empty text="Esta correspondencia todavía no tiene archivos adjuntos." />
+        )}
+      </Card>
+    </>
+  );
+}
+
 
 
 /* =========================================================

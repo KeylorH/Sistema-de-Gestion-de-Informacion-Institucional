@@ -25,6 +25,8 @@ import {
   CorrespondenceAttachment,
   CorrespondenceComment,
   ExternalLink,
+  InstitutionalCorrespondence,
+  InstitutionalCorrespondenceAttachment,
   InstitutionalForm,
   News,
   Procedure,
@@ -59,6 +61,7 @@ import {
   AuditService,
   CorrespondenceService,
   FormsService,
+  InstitutionalCorrespondenceService,
   LinksService,
   NewsService,
   ProcedureService,
@@ -75,6 +78,7 @@ import {
   AuthController,
   CorrespondenceController,
   FormsController,
+  InstitutionalCorrespondenceController,
   LinksController,
   NewsController,
   ProcedureController,
@@ -90,9 +94,14 @@ const entities = [
   Role,
   User,
 
+  /* ASIGNACIONES */
   Correspondence,
   CorrespondenceAttachment,
   CorrespondenceComment,
+
+  /* CORRESPONDENCIA INSTITUCIONAL */
+  InstitutionalCorrespondence,
+  InstitutionalCorrespondenceAttachment,
 
   RepositoryDocument,
 
@@ -208,7 +217,13 @@ const entities = [
   controllers: [
     AuthController,
     UsersController,
+
+    /* ASIGNACIONES */
     CorrespondenceController,
+
+    /* CORRESPONDENCIA INSTITUCIONAL */
+    InstitutionalCorrespondenceController,
+
     RepositoryController,
     ProcedureController,
     FormsController,
@@ -228,7 +243,13 @@ const entities = [
     /* SERVICES */
     AuditService,
     UsersService,
+
+    /* ASIGNACIONES */
     CorrespondenceService,
+
+    /* CORRESPONDENCIA INSTITUCIONAL */
+    InstitutionalCorrespondenceService,
+
     RepositoryService,
     ProcedureService,
     FormsService,

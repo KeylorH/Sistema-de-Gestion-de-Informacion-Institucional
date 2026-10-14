@@ -165,21 +165,23 @@ export default function Layout() {
 
 
     {
-
-      to: '/correspondencia',
-
-      label: 'Correspondencia',
-
-      icon: Mail,
-
+      to: '/asignaciones',
+      label: 'Asignaciones',
+      icon: ClipboardList,
       roles: [
-
         ROLES.ADMIN,
-
         ROLES.EDITOR,
-
       ],
+    },
 
+    {
+      to: '/correspondencia',
+      label: 'Correspondencia',
+      icon: Mail,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.EDITOR,
+      ],
     },
 
 
