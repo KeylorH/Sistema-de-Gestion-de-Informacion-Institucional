@@ -40,6 +40,12 @@ export enum ContentStatus {
   PUBLICADO = 'PUBLICADO',
 }
 
+export enum NewsPriority {
+  BAJA = 'BAJA',
+  MEDIA = 'MEDIA',
+  ALTA = 'ALTA',
+}
+
 /*
  * Correspondencia institucional real.
  */
@@ -830,9 +836,21 @@ export class News {
   content: string;
 
   @Column({
-    default: 'Campus',
+    default: 'Eventos',
   })
   category: string;
+
+  @Column({
+    type: 'enum',
+    enum: NewsPriority,
+    default: NewsPriority.MEDIA,
+  })
+  priority: NewsPriority;
+
+  @Column({
+    default: 'GENERAL',
+  })
+  targetArea: string;
 
   @Column({
     type: 'text',

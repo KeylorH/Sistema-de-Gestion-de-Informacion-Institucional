@@ -6902,40 +6902,259 @@ export function Links() {
 
 \========================================================= */
 
-const NEWS_CATEGORIES = ['Eventos', 'Comunicados', 'Avisos'];
+const NEWS_CATEGORIES = [
+  'Eventos',
+  'Comunicados',
+  'Avisos',
+];
+
+const NEWS_PRIORITIES = [
+  'BAJA',
+  'MEDIA',
+  'ALTA',
+];
+
+function newsPriorityLabel(
+  value?: string,
+) {
+  const priority =
+    String(
+      value || 'MEDIA',
+    ).toUpperCase();
+
+  if (priority === 'ALTA') {
+    return 'Alta';
+  }
+
+  if (priority === 'BAJA') {
+    return 'Baja';
+  }
+
+  return 'Media';
+}
+
+function newsPriorityTone(
+  value?: string,
+): 'red' | 'green' | 'blue' | undefined {
+  const priority =
+    String(
+      value || 'MEDIA',
+    ).toUpperCase();
+
+  if (priority === 'ALTA') {
+    return 'red';
+  }
+
+  if (priority === 'BAJA') {
+    return 'green';
+  }
+
+  return 'blue';
+}
 
 export function News() {
-  const { user } = useAuth() as any;
-  const roles: string[] = user?.roles ?? [];
-  const canCreate = roles.some((r) =>
-    ['ADMIN', 'EDITOR'].includes(String(r).toUpperCase()),
-  );
+  const { user } =
+    useAuth() as any;
 
-  const [d, setD] = useState<any[]>([]);
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(NEWS_CATEGORIES[0]);
-  const [summary, setSummary] = useState('');
-  const [image, setImage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const roles: string[] =
+    user?.roles ?? [];
+
+  const canCreate =
+    roles.some((role) =>
+      [
+        'ADMIN',
+        'EDITOR',
+      ].includes(
+        String(
+          role,
+        ).toUpperCase(),
+      ),
+    );
+
+  const [data, setData] =
+    useState<any[]>([]);
+
+  const [open, setOpen] =
+    useState(false);
+
+  const [title, setTitle] =
+    useState('');
+
+  const [category, setCategory] =
+    useState(
+      NEWS_CATEGORIES[0],
+    );
+
+  const [priority, setPriority] =
+    useState('MEDIA');
+
+  const [targetArea, setTargetArea] =
+    useState('GENERAL');
+
+  const [summary, setSummary] =
+    useState('');
+
+  const [image, setImage] =
+    useState<string | null>(
+      null,
+    );
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [
+    searchFilter,
+    setSearchFilter,
+  ] = useState('');
+
+  const [
+    categoryFilter,
+    setCategoryFilter,
+  ] = useState('TODAS');
+
+  const [
+    priorityFilter,
+    setPriorityFilter,
+  ] = useState('TODAS');
+
+  const [
+    areaFilter,
+    setAreaFilter,
+  ] = useState('TODAS');
 
   const load = () =>
     api
       .get('/news')
-      .then((r) => setD(r.data))
-      .catch((error) => console.error('Error cargando noticias:', error));
+      .then((response) =>
+        setData(
+          response.data,
+        ),
+      )
+      .catch((error) =>
+        console.error(
+          'Error cargando noticias:',
+          error,
+        ),
+      );
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
-  const onFile = (f?: File) => {
-    if (!f) return;
-    if (!f.type.startsWith('image/')) return alert('Selecciona una imagen.');
-    if (f.size > 2 * 1024 * 1024) return alert('La imagen debe pesar menos de 2 MB.');
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result as string);
-    reader.readAsDataURL(f);
+  const areas =
+    Array.from(
+      new Set(
+        data
+          .map(
+            (item) =>
+              String(
+                item.targetArea ||
+                  'GENERAL',
+              ).trim(),
+          )
+          .filter(Boolean),
+      ),
+    ).sort();
+
+  const filtered =
+    data.filter((item) => {
+      const query =
+        searchFilter
+          .trim()
+          .toLowerCase();
+
+      const matchesSearch =
+        !query ||
+        [
+          item.title,
+          item.summary,
+          item.category,
+          item.priority,
+          item.targetArea,
+          item.author?.name,
+        ].some((value) =>
+          String(value ?? '')
+            .toLowerCase()
+            .includes(query),
+        );
+
+      const matchesCategory =
+        categoryFilter ===
+          'TODAS' ||
+        item.category ===
+          categoryFilter;
+
+      const normalizedPriority =
+        String(
+          item.priority ||
+            'MEDIA',
+        ).toUpperCase();
+
+      const matchesPriority =
+        priorityFilter ===
+          'TODAS' ||
+        normalizedPriority ===
+          priorityFilter;
+
+      const normalizedArea =
+        String(
+          item.targetArea ||
+            'GENERAL',
+        );
+
+      const matchesArea =
+        areaFilter ===
+          'TODAS' ||
+        normalizedArea ===
+          areaFilter;
+
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesPriority &&
+        matchesArea
+      );
+    });
+
+  const onFile = (
+    file?: File,
+  ) => {
+    if (!file) {
+      return;
+    }
+
+    if (
+      !file.type.startsWith(
+        'image/',
+      )
+    ) {
+      alert(
+        'Selecciona una imagen.',
+      );
+      return;
+    }
+
+    if (
+      file.size >
+      2 * 1024 * 1024
+    ) {
+      alert(
+        'La imagen debe pesar menos de 2 MB.',
+      );
+      return;
+    }
+
+    const reader =
+      new FileReader();
+
+    reader.onload = () =>
+      setImage(
+        reader.result as string,
+      );
+
+    reader.readAsDataURL(
+      file,
+    );
   };
 
   const close = () => {
@@ -6943,19 +7162,67 @@ export function News() {
     setTitle('');
     setSummary('');
     setImage(null);
-    setCategory(NEWS_CATEGORIES[0]);
+
+    setCategory(
+      NEWS_CATEGORIES[0],
+    );
+
+    setPriority('MEDIA');
+    setTargetArea('GENERAL');
   };
 
   const save = async () => {
-    if (!title.trim() || !summary.trim()) return alert('Completa el título y la descripción.');
+    if (
+      !title.trim() ||
+      !summary.trim()
+    ) {
+      alert(
+        'Completa el título y la descripción.',
+      );
+      return;
+    }
+
+    if (
+      !targetArea.trim()
+    ) {
+      alert(
+        'Indique el área o público objetivo.',
+      );
+      return;
+    }
+
     setSaving(true);
+
     try {
-      await api.post('/news', { title, category, summary, imageUrl: image });
+      await api.post(
+        '/news',
+        {
+          title:
+            title.trim(),
+          category,
+          priority,
+          targetArea:
+            targetArea.trim(),
+          summary:
+            summary.trim(),
+          imageUrl: image,
+        },
+      );
+
       close();
-      load();
-    } catch (error) {
-      console.error('Error creando noticia:', error);
-      alert('No se pudo crear la noticia.');
+
+      await load();
+    } catch (error: any) {
+      console.error(
+        'Error creando noticia:',
+        error,
+      );
+
+      alert(
+        error?.response?.data
+          ?.message ||
+          'No se pudo crear la noticia.',
+      );
     } finally {
       setSaving(false);
     }
@@ -6965,85 +7232,375 @@ export function News() {
     <>
       <div className="news-head">
         <div>
-          <h1>Noticias</h1>
+          <h1>
+            Noticias
+          </h1>
+
           <p>
-            Mantente informado sobre actividades y comunicados del Campus
-            Tecnológico de San José.
+            Mantente informado sobre actividades y comunicados del Campus Tecnológico de San José.
           </p>
         </div>
+
         {canCreate && (
-          <button className="news-add" onClick={() => setOpen(true)}>
+          <button
+            className="news-add"
+            onClick={() =>
+              setOpen(true)
+            }
+          >
             + Nueva noticia
           </button>
         )}
       </div>
 
-      <div className="news-grid">
-        {d.map((x) => (
-          <article className="news-card" key={x.id}>
-            <div
-              className="news-photo"
-              style={x.imageUrl ? { backgroundImage: `url(${x.imageUrl})` } : undefined}
-            />
-            <div className="news-body">
-              <span className="news-tag">{x.category}</span>
-              <h3>{x.title}</h3>
-              <p>{x.summary}</p>
-              <small>
-                {x.createdAt ? new Date(x.createdAt).toLocaleDateString() : ''}
-              </small>
-            </div>
-          </article>
-        ))}
-      </div>
+      <Card>
+        <div className="repository-toolbar">
+          <input
+            type="search"
+            value={
+              searchFilter
+            }
+            onChange={(event) =>
+              setSearchFilter(
+                event.target
+                  .value,
+              )
+            }
+            placeholder="Buscar noticia..."
+          />
+
+          <select
+            value={
+              categoryFilter
+            }
+            onChange={(event) =>
+              setCategoryFilter(
+                event.target
+                  .value,
+              )
+            }
+          >
+            <option value="TODAS">
+              Todas las categorías
+            </option>
+
+            {NEWS_CATEGORIES.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              ),
+            )}
+          </select>
+
+          <select
+            value={
+              priorityFilter
+            }
+            onChange={(event) =>
+              setPriorityFilter(
+                event.target
+                  .value,
+              )
+            }
+          >
+            <option value="TODAS">
+              Todas las prioridades
+            </option>
+
+            {NEWS_PRIORITIES.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {newsPriorityLabel(
+                    item,
+                  )}
+                </option>
+              ),
+            )}
+          </select>
+
+          <select
+            value={
+              areaFilter
+            }
+            onChange={(event) =>
+              setAreaFilter(
+                event.target
+                  .value,
+              )
+            }
+          >
+            <option value="TODAS">
+              Todas las áreas
+            </option>
+
+            {areas.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              ),
+            )}
+          </select>
+
+          <span>
+            {filtered.length}{' '}
+            noticia(s)
+          </span>
+        </div>
+      </Card>
+
+      {filtered.length ? (
+        <div className="news-grid">
+          {filtered.map(
+            (item) => (
+              <article
+                className="news-card"
+                key={item.id}
+              >
+                <div
+                  className="news-photo"
+                  style={
+                    item.imageUrl
+                      ? {
+                          backgroundImage:
+                            `url(${item.imageUrl})`,
+                        }
+                      : undefined
+                  }
+                />
+
+                <div className="news-body">
+                  <div
+                    style={{
+                      display:
+                        'flex',
+                      gap: '8px',
+                      flexWrap:
+                        'wrap',
+                      alignItems:
+                        'center',
+                    }}
+                  >
+                    <span className="news-tag">
+                      {item.category}
+                    </span>
+
+                    <Badge
+                      tone={newsPriorityTone(
+                        item.priority,
+                      )}
+                    >
+                      Prioridad{' '}
+                      {newsPriorityLabel(
+                        item.priority,
+                      )}
+                    </Badge>
+                  </div>
+
+                  <h3>
+                    {item.title}
+                  </h3>
+
+                  <p>
+                    {item.summary}
+                  </p>
+
+                  <p>
+                    <b>
+                      Área / público:
+                    </b>{' '}
+                    {item.targetArea ||
+                      'GENERAL'}
+                  </p>
+
+                  <small>
+                    {item.createdAt
+                      ? new Date(
+                          item.createdAt,
+                        ).toLocaleDateString()
+                      : ''}
+                  </small>
+                </div>
+              </article>
+            ),
+          )}
+        </div>
+      ) : (
+        <Card>
+          <Empty text="No hay noticias que coincidan con los filtros seleccionados." />
+        </Card>
+      )}
 
       {open && (
-        <div className="news-overlay" onClick={close}>
-          <div className="news-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Nueva noticia</h2>
+        <div
+          className="news-overlay"
+          onClick={close}
+        >
+          <div
+            className="news-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <h2>
+              Nueva noticia
+            </h2>
 
-            <label>Foto de portada</label>
+            <label>
+              Foto de portada
+            </label>
+
             <label className="news-drop">
               {image ? (
-                <img src={image} alt="Vista previa" />
+                <img
+                  src={image}
+                  alt="Vista previa"
+                />
               ) : (
-                <span>Haz clic para subir una imagen (máx. 2 MB)</span>
+                <span>
+                  Haz clic para subir una imagen (máx. 2 MB)
+                </span>
               )}
+
               <input
                 type="file"
                 accept="image/*"
                 hidden
-                onChange={(e) => onFile(e.target.files?.[0])}
+                onChange={(event) =>
+                  onFile(
+                    event.target
+                      .files?.[0],
+                  )
+                }
               />
             </label>
 
-            <label>Título</label>
+            <label>
+              Título
+            </label>
+
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(event) =>
+                setTitle(
+                  event.target
+                    .value,
+                )
+              }
               placeholder="Ej. Actividad cultural en el campus"
             />
 
-            <label>Categoría</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {NEWS_CATEGORIES.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
+            <label>
+              Categoría
+            </label>
+
+            <select
+              value={category}
+              onChange={(event) =>
+                setCategory(
+                  event.target
+                    .value,
+                )
+              }
+            >
+              {NEWS_CATEGORIES.map(
+                (item) => (
+                  <option
+                    key={item}
+                    value={item}
+                  >
+                    {item}
+                  </option>
+                ),
+              )}
             </select>
 
-            <label>Descripción</label>
+            <label>
+              Prioridad
+            </label>
+
+            <select
+              value={priority}
+              onChange={(event) =>
+                setPriority(
+                  event.target
+                    .value,
+                )
+              }
+            >
+              {NEWS_PRIORITIES.map(
+                (item) => (
+                  <option
+                    key={item}
+                    value={item}
+                  >
+                    {newsPriorityLabel(
+                      item,
+                    )}
+                  </option>
+                ),
+              )}
+            </select>
+
+            <label>
+              Área / público objetivo
+            </label>
+
+            <input
+              value={targetArea}
+              onChange={(event) =>
+                setTargetArea(
+                  event.target
+                    .value,
+                )
+              }
+              placeholder="GENERAL, Administración, Estudiantes..."
+            />
+
+            <label>
+              Descripción
+            </label>
+
             <textarea
               rows={3}
               value={summary}
-              onChange={(e) => setSummary(e.target.value)}
+              onChange={(event) =>
+                setSummary(
+                  event.target
+                    .value,
+                )
+              }
             />
 
             <div className="news-actions">
-              <button className="news-cancel" onClick={close}>
+              <button
+                className="news-cancel"
+                onClick={close}
+                disabled={saving}
+              >
                 Cancelar
               </button>
-              <button className="news-add" onClick={save} disabled={saving}>
-                {saving ? 'Guardando…' : 'Publicar noticia'}
+
+              <button
+                className="news-add"
+                onClick={() =>
+                  void save()
+                }
+                disabled={saving}
+              >
+                {saving
+                  ? 'Guardando…'
+                  : 'Publicar noticia'}
               </button>
             </div>
           </div>

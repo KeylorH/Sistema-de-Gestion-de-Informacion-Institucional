@@ -23,6 +23,7 @@ import {
   ExternalLink,
   InstitutionalForm,
   News,
+  NewsPriority,
   Procedure,
   RepositoryDocument,
   Role,
@@ -2084,6 +2085,32 @@ export class NewsService {
     });
   }
 
+  private normalizePriority(
+    value: any,
+  ) {
+    const priority =
+      String(
+        value ||
+          NewsPriority.MEDIA,
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      !Object.values(
+        NewsPriority,
+      ).includes(
+        priority as NewsPriority,
+      )
+    ) {
+      throw new BadRequestException(
+        'La prioridad debe ser BAJA, MEDIA o ALTA',
+      );
+    }
+
+    return priority as NewsPriority;
+  }
+
   async create(
     dto: any,
     current: any,
@@ -2102,10 +2129,59 @@ export class NewsService {
       );
     }
 
+    const title =
+      String(
+        dto.title || '',
+      ).trim();
+
+    const summary =
+      String(
+        dto.summary || '',
+      ).trim();
+
+    if (!title || !summary) {
+      throw new BadRequestException(
+        'Título y descripción son obligatorios',
+      );
+    }
+
+    const category =
+      String(
+        dto.category ||
+          'Eventos',
+      ).trim() ||
+      'Eventos';
+
+    const targetArea =
+      String(
+        dto.targetArea ||
+          'GENERAL',
+      ).trim() ||
+      'GENERAL';
+
+    const priority =
+      this.normalizePriority(
+        dto.priority,
+      );
+
     const entity:
       News =
       this.repo.create({
-        ...dto,
+        title,
+        summary,
+        content:
+          String(
+            dto.content || '',
+          ).trim() ||
+          null,
+        category,
+        priority,
+        targetArea,
+        imageUrl:
+          dto.imageUrl || null,
+        published:
+          dto.published ??
+          true,
         author: user,
       } as Partial<News>);
 
@@ -2120,9 +2196,10 @@ export class NewsService {
       'PUBLICACION',
       'Noticia',
       saved.id,
-      `Se publicó ${saved.title}`,
+      `Se publicó ${saved.title} | Categoría: ${saved.category} | Prioridad: ${saved.priority} | Área: ${saved.targetArea}`,
     );
 
     return saved;
   }
 }
+
