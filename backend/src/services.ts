@@ -372,6 +372,21 @@ export class UsersService {
           dto.active ?? true,
         mustChangePassword:
           true,
+        audienceType:
+          Object.values(NewsAudience).includes(
+            dto.audienceType as NewsAudience,
+          )
+            ? (dto.audienceType as NewsAudience)
+            : NewsAudience.GENERAL,
+        receiveNewsEmails:
+          dto.receiveNewsEmails ??
+          true,
+        minimumNewsPriority:
+          Object.values(NewsPriority).includes(
+            dto.minimumNewsPriority as NewsPriority,
+          )
+            ? (dto.minimumNewsPriority as NewsPriority)
+            : NewsPriority.MEDIA,
         passwordHash:
           await hash(
             temporaryPassword,
@@ -434,6 +449,9 @@ export class UsersService {
       email: user.email,
       position: user.position,
       active: user.active,
+      audienceType: user.audienceType,
+      receiveNewsEmails: user.receiveNewsEmails,
+      minimumNewsPriority: user.minimumNewsPriority,
     };
 
     if (dto.roleNames) {
@@ -499,6 +517,77 @@ export class UsersService {
         ).trim() || null;
     }
 
+    if (
+      dto.audienceType !==
+      undefined
+    ) {
+      const audience =
+        String(
+          dto.audienceType,
+        )
+          .trim()
+          .toUpperCase();
+
+      if (
+        !Object.values(
+          NewsAudience,
+        ).includes(
+          audience as NewsAudience,
+        )
+      ) {
+        throw new BadRequestException(
+          'El público debe ser GENERAL, ESTUDIANTES, PROFESORES o FUNCIONARIOS',
+        );
+      }
+
+      user.audienceType =
+        audience as NewsAudience;
+    }
+
+    if (
+      dto.receiveNewsEmails !==
+      undefined
+    ) {
+      if (
+        typeof dto.receiveNewsEmails !==
+        'boolean'
+      ) {
+        throw new BadRequestException(
+          'La preferencia de correo debe ser verdadera o falsa',
+        );
+      }
+
+      user.receiveNewsEmails =
+        dto.receiveNewsEmails;
+    }
+
+    if (
+      dto.minimumNewsPriority !==
+      undefined
+    ) {
+      const minimumPriority =
+        String(
+          dto.minimumNewsPriority,
+        )
+          .trim()
+          .toUpperCase();
+
+      if (
+        !Object.values(
+          NewsPriority,
+        ).includes(
+          minimumPriority as NewsPriority,
+        )
+      ) {
+        throw new BadRequestException(
+          'La prioridad mínima debe ser BAJA, MEDIA o ALTA',
+        );
+      }
+
+      user.minimumNewsPriority =
+        minimumPriority as NewsPriority;
+    }
+
     user.active =
       dto.active ??
       user.active;
@@ -523,7 +612,13 @@ export class UsersService {
       previousProfile.position !==
         saved.position ||
       previousProfile.active !==
-        saved.active;
+        saved.active ||
+      previousProfile.audienceType !==
+        saved.audienceType ||
+      previousProfile.receiveNewsEmails !==
+        saved.receiveNewsEmails ||
+      previousProfile.minimumNewsPriority !==
+        saved.minimumNewsPriority;
 
     await this.audit.log(
       current.sub,

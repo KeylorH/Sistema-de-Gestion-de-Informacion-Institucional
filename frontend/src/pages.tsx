@@ -4506,6 +4506,31 @@ const NEWS_CATEGORIES = ['Eventos', 'Comunicados', 'Avisos'];
 
 const NEWS_PRIORITIES = ['BAJA', 'MEDIA', 'ALTA'];
 
+const NEWS_AUDIENCES = [
+  'GENERAL',
+  'ESTUDIANTES',
+  'PROFESORES',
+  'FUNCIONARIOS',
+];
+
+function newsAudienceLabel(value?: string) {
+  const audience = String(value || 'GENERAL').toUpperCase();
+
+  if (audience === 'ESTUDIANTES') {
+    return 'Estudiantes';
+  }
+
+  if (audience === 'PROFESORES') {
+    return 'Profesores';
+  }
+
+  if (audience === 'FUNCIONARIOS') {
+    return 'Funcionarios';
+  }
+
+  return 'General';
+}
+
 function newsPriorityLabel(value?: string) {
   const priority = String(value || 'MEDIA').toUpperCase();
 
@@ -4581,13 +4606,6 @@ export function News() {
     void load();
   }, []);
 
-  const areas = Array.from(
-    new Set(
-      data
-        .map((item) => String(item.targetArea || 'GENERAL').trim())
-        .filter(Boolean),
-    ),
-  ).sort();
 
   const filtered = data.filter((item) => {
     const query = searchFilter.trim().toLowerCase();
@@ -4661,7 +4679,7 @@ export function News() {
     }
 
     if (!targetArea.trim()) {
-      alert('Indique el área o público objetivo.');
+      alert('Seleccione el público objetivo.');
       return;
     }
 
@@ -4747,11 +4765,11 @@ export function News() {
             value={areaFilter}
             onChange={(event) => setAreaFilter(event.target.value)}
           >
-            <option value="TODAS">Todas las áreas</option>
+            <option value="TODAS">Todos los públicos</option>
 
-            {areas.map((item) => (
+            {NEWS_AUDIENCES.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {newsAudienceLabel(item)}
               </option>
             ))}
           </select>
@@ -4796,7 +4814,8 @@ export function News() {
                 <p>{item.summary}</p>
 
                 <p>
-                  <b>Área / público:</b> {item.targetArea || 'GENERAL'}
+                  <b>Público objetivo:</b>{' '}
+                  {newsAudienceLabel(item.targetArea)}
                 </p>
 
                 <small>
@@ -4870,13 +4889,18 @@ export function News() {
               ))}
             </select>
 
-            <label>Área / público objetivo</label>
+            <label>Público objetivo</label>
 
-            <input
+            <select
               value={targetArea}
               onChange={(event) => setTargetArea(event.target.value)}
-              placeholder="GENERAL, Administración, Estudiantes..."
-            />
+            >
+              {NEWS_AUDIENCES.map((item) => (
+                <option key={item} value={item}>
+                  {newsAudienceLabel(item)}
+                </option>
+              ))}
+            </select>
 
             <label>Descripción</label>
 
@@ -4943,6 +4967,9 @@ export function Users() {
     position: '',
     roleName: 'CONSULTOR',
     password: '',
+    audienceType: 'GENERAL',
+    receiveNewsEmails: true,
+    minimumNewsPriority: 'MEDIA',
   });
 
   const [temporaryCredential, setTemporaryCredential] = useState<{
@@ -4977,6 +5004,9 @@ export function Users() {
       position: '',
       roleName: 'CONSULTOR',
       password: '',
+      audienceType: 'GENERAL',
+      receiveNewsEmails: true,
+      minimumNewsPriority: 'MEDIA',
     });
 
     setCreatePasswordMode('AUTO');
@@ -5006,6 +5036,9 @@ export function Users() {
         email: createForm.email.trim(),
         position: createForm.position.trim(),
         roleNames: [createForm.roleName],
+        audienceType: createForm.audienceType,
+        receiveNewsEmails: createForm.receiveNewsEmails,
+        minimumNewsPriority: createForm.minimumNewsPriority,
         ...(createPasswordMode === 'MANUAL'
           ? {
               password: createForm.password,
@@ -5198,6 +5231,9 @@ export function Users() {
       email: item.email || '',
       position: item.position || '',
       active: Boolean(item.active),
+      audienceType: item.audienceType || 'GENERAL',
+      receiveNewsEmails: item.receiveNewsEmails ?? true,
+      minimumNewsPriority: item.minimumNewsPriority || 'MEDIA',
     });
   };
 
@@ -5219,6 +5255,9 @@ export function Users() {
         email: editing.email.trim(),
         position: editing.position.trim(),
         active: editing.active,
+        audienceType: editing.audienceType,
+        receiveNewsEmails: editing.receiveNewsEmails,
+        minimumNewsPriority: editing.minimumNewsPriority,
       });
 
       await loadUsers();
@@ -5499,6 +5538,60 @@ export function Users() {
               </select>
             </label>
 
+            <label>
+              Público institucional
+              <select
+                value={createForm.audienceType}
+                onChange={(e) =>
+                  setCreateForm({
+                    ...createForm,
+                    audienceType: e.target.value,
+                  })
+                }
+              >
+                {NEWS_AUDIENCES.map((item) => (
+                  <option key={item} value={item}>
+                    {newsAudienceLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Prioridad mínima de alertas
+              <select
+                value={createForm.minimumNewsPriority}
+                onChange={(e) =>
+                  setCreateForm({
+                    ...createForm,
+                    minimumNewsPriority: e.target.value,
+                  })
+                }
+              >
+                {NEWS_PRIORITIES.map((item) => (
+                  <option key={item} value={item}>
+                    {newsPriorityLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="full">
+              <span>Alertas de noticias por correo</span>
+              <select
+                value={createForm.receiveNewsEmails ? 'SI' : 'NO'}
+                onChange={(e) =>
+                  setCreateForm({
+                    ...createForm,
+                    receiveNewsEmails: e.target.value === 'SI',
+                  })
+                }
+              >
+                <option value="SI">Sí, recibir alertas</option>
+                <option value="NO">No recibir alertas</option>
+              </select>
+            </label>
+
             <div className="full user-password-mode">
               <strong>Contraseña temporal</strong>
 
@@ -5626,6 +5719,60 @@ export function Users() {
               </select>
             </label>
 
+            <label>
+              Público institucional
+              <select
+                value={editing.audienceType}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    audienceType: e.target.value,
+                  })
+                }
+              >
+                {NEWS_AUDIENCES.map((item) => (
+                  <option key={item} value={item}>
+                    {newsAudienceLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Prioridad mínima de alertas
+              <select
+                value={editing.minimumNewsPriority}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    minimumNewsPriority: e.target.value,
+                  })
+                }
+              >
+                {NEWS_PRIORITIES.map((item) => (
+                  <option key={item} value={item}>
+                    {newsPriorityLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Alertas de noticias por correo
+              <select
+                value={editing.receiveNewsEmails ? 'SI' : 'NO'}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    receiveNewsEmails: e.target.value === 'SI',
+                  })
+                }
+              >
+                <option value="SI">Sí, recibir alertas</option>
+                <option value="NO">No recibir alertas</option>
+              </select>
+            </label>
+
             <div className="full user-edit-actions">
               <button
                 type="button"
@@ -5695,6 +5842,7 @@ export function Users() {
                 <th>Puesto</th>
                 <th>Rol actual</th>
                 <th>Permisos</th>
+                <th>Alertas de noticias</th>
                 <th>Estado</th>
                 <th>Administrar</th>
               </tr>
@@ -5761,6 +5909,22 @@ export function Users() {
                       <small className="user-role-description">
                         {roleDescription(role)}
                       </small>
+                    </td>
+
+                    <td>
+                      <div style={{ display: 'grid', gap: '4px' }}>
+                        <strong>
+                          {newsAudienceLabel(item.audienceType)}
+                        </strong>
+
+                        <small>
+                          {item.receiveNewsEmails
+                            ? `Correo activo · Desde prioridad ${newsPriorityLabel(
+                                item.minimumNewsPriority,
+                              )}`
+                            : 'Correo desactivado'}
+                        </small>
+                      </div>
                     </td>
 
                     <td>
