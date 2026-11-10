@@ -25,6 +25,7 @@ import {
   CorrespondenceAttachment,
   CorrespondenceComment,
   ExternalLink,
+  Folder,
   InstitutionalCorrespondence,
   InstitutionalCorrespondenceAttachment,
   InstitutionalForm,
@@ -62,12 +63,33 @@ import {
   CorrespondenceService,
   FormsService,
   InstitutionalCorrespondenceService,
-  LinksService,
   NewsService,
   ProcedureService,
   RepositoryService,
   UsersService,
 } from './services';
+
+/* =========================================================
+   CARPETAS INSTITUCIONALES
+========================================================= */
+
+import {
+  FoldersController,
+  FoldersService,
+} from './folders';
+
+import {
+  FolderImportService,
+} from './folder-import.service';
+
+/* =========================================================
+   ENLACES (ACCESOS RÁPIDOS)
+========================================================= */
+
+import { LinksController } from './links/links.controller';
+import { LinksService } from './links/links.service';
+
+import { MailService } from './mail.service';
 
 /* =========================================================
    CONTROLADORES
@@ -79,7 +101,6 @@ import {
   CorrespondenceController,
   FormsController,
   InstitutionalCorrespondenceController,
-  LinksController,
   NewsController,
   ProcedureController,
   RepositoryController,
@@ -102,6 +123,9 @@ const entities = [
   /* CORRESPONDENCIA INSTITUCIONAL */
   InstitutionalCorrespondence,
   InstitutionalCorrespondenceAttachment,
+
+  /* CARPETAS INSTITUCIONALES */
+  Folder,
 
   RepositoryDocument,
 
@@ -224,6 +248,9 @@ const entities = [
     /* CORRESPONDENCIA INSTITUCIONAL */
     InstitutionalCorrespondenceController,
 
+    /* CARPETAS INSTITUCIONALES */
+    FoldersController,
+
     RepositoryController,
     ProcedureController,
     FormsController,
@@ -250,10 +277,15 @@ const entities = [
     /* CORRESPONDENCIA INSTITUCIONAL */
     InstitutionalCorrespondenceService,
 
+    /* CARPETAS INSTITUCIONALES */
+    FoldersService,
+    FolderImportService, // <-- Servicio de importación automática de carpetas
+
     RepositoryService,
     ProcedureService,
     FormsService,
     LinksService,
+    MailService,
     NewsService,
   ],
 })

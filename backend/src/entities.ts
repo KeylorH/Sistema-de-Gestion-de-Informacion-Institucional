@@ -46,6 +46,13 @@ export enum NewsPriority {
   ALTA = 'ALTA',
 }
 
+export enum NewsAudience {
+  GENERAL = 'GENERAL',
+  ESTUDIANTES = 'ESTUDIANTES',
+  PROFESORES = 'PROFESORES',
+  FUNCIONARIOS = 'FUNCIONARIOS',
+}
+
 /*
  * Correspondencia institucional real.
  */
@@ -114,6 +121,37 @@ export class User {
     default: true,
   })
   active: boolean;
+
+  /*
+   * Público institucional al que pertenece el usuario.
+   * Se utiliza para focalizar noticias y alertas.
+   */
+  @Column({
+    type: 'enum',
+    enum: NewsAudience,
+    default: NewsAudience.GENERAL,
+  })
+  audienceType: NewsAudience;
+
+  /*
+   * Permite al usuario decidir si desea recibir
+   * notificaciones de noticias por correo electrónico.
+   */
+  @Column({
+    default: true,
+  })
+  receiveNewsEmails: boolean;
+
+  /*
+   * Prioridad mínima que debe tener una noticia
+   * para generar una alerta por correo a este usuario.
+   */
+  @Column({
+    type: 'enum',
+    enum: NewsPriority,
+    default: NewsPriority.MEDIA,
+  })
+  minimumNewsPriority: NewsPriority;
 
   @Column({
     default: false,
@@ -524,6 +562,53 @@ export class InstitutionalCorrespondenceAttachment {
 }
 
 /* =========================================================
+   CARPETAS INSTITUCIONALES
+   Estructura jerárquica del Archivo Institucional.
+========================================================= */
+
+@Entity('folders')
+export class Folder {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ length: 200 })
+  name: string;
+
+  @Column({ length: 50, unique: true, nullable: true })
+  code: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @Column({ type: 'int', default: 1 })
+  level: number;
+
+  @Column({ length: 30, default: 'Default' })
+  color: string;
+
+  @Column({ name: 'sort_order', type: 'int', default: 0 })
+  sortOrder: number;
+
+  @ManyToOne(() => Folder, (folder) => folder.children, {
+    onDelete: 'RESTRICT',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'parent_id' })
+  parent: Folder;
+
+  @OneToMany(() => Folder, (folder) => folder.parent)
+  children: Folder[];
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}
+
+
+
+/* =========================================================
    REPOSITORIO DOCUMENTAL
 ========================================================= */
 
@@ -586,6 +671,18 @@ export class RepositoryDocument {
     nullable: true,
   })
   responsible: User;
+
+  /*
+   * Carpeta institucional a la que pertenece el documento.
+   */
+  @ManyToOne(() => Folder, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({
+    name: 'folder_id',
+  })
+  folder: Folder | null;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -683,6 +780,18 @@ export class Procedure {
     label: string;
     documentId?: string;
   }[];
+
+  /*
+   * Carpeta institucional a la que pertenece el procedimiento.
+   */
+  @ManyToOne(() => Folder, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({
+    name: 'folder_id',
+  })
+  folder: Folder | null;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -788,6 +897,15 @@ export class InstitutionalForm {
    ENLACES
 ========================================================= */
 
+/*
+ * INTERNO: sistemas institucionales propios.
+ * EXTERNO: recursos de consulta legal/bibliográfica.
+ */
+export enum LinkType {
+  INTERNO = 'INTERNO',
+  EXTERNO = 'EXTERNO',
+}
+
 @Entity('external_links')
 export class ExternalLink {
   @PrimaryGeneratedColumn('uuid')
@@ -810,9 +928,92 @@ export class ExternalLink {
   category: string;
 
   @Column({
+    type: 'enum',
+    enum: LinkType,
+    default: LinkType.EXTERNO,
+  })
+  type: LinkType;
+
+  /*
+   * El enlace solo funciona desde la red TEC o por VPN.
+   * Hoy solo se informa en la interfaz; no se detecta
+   * la IP del cliente.
+   */
+  @Column({
+    name: 'requires_institutional_network',
+    default: false,
+  })
+  requiresInstitutionalNetwork: boolean;
+
+  @Column({
+    name: 'sort_order',
+    default: 0,
+  })
+  sortOrder: number;
+
+  @Column({
     default: true,
   })
   active: boolean;
+
+  /*
+   * Público institucional al que pertenece el usuario.
+   * Se utiliza para focalizar noticias y alertas.
+   */
+  @Column({
+    type: 'enum',
+    enum: NewsAudience,
+    default: NewsAudience.GENERAL,
+  })
+  audienceType: NewsAudience;
+
+  /*
+   * Permite al usuario decidir si desea recibir
+   * notificaciones de noticias por correo electrónico.
+   */
+  @Column({
+    default: true,
+  })
+  receiveNewsEmails: boolean;
+
+  /*
+   * Prioridad mínima que debe tener una noticia
+   * para generar una alerta por correo a este usuario.
+   */
+  @Column({
+    type: 'enum',
+    enum: NewsPriority,
+    default: NewsPriority.MEDIA,
+  })
+  minimumNewsPriority: NewsPriority;
+
+  @ManyToOne(() => User, {
+    eager: true,
+    nullable: true,
+  })
+  @JoinColumn({
+    name: 'created_by_id',
+  })
+  createdBy: User;
+
+  @ManyToOne(() => User, {
+    eager: true,
+    nullable: true,
+  })
+  @JoinColumn({
+    name: 'updated_by_id',
+  })
+  updatedBy: User;
+
+  @CreateDateColumn({
+    name: 'created_at',
+  })
+  createdAt: Date;
+
+  @UpdateDateColumn({
+    name: 'updated_at',
+  })
+  updatedAt: Date;
 }
 
 /* =========================================================
@@ -848,9 +1049,11 @@ export class News {
   priority: NewsPriority;
 
   @Column({
-    default: 'GENERAL',
+    type: 'enum',
+    enum: NewsAudience,
+    default: NewsAudience.GENERAL,
   })
-  targetArea: string;
+  targetArea: NewsAudience;
 
   @Column({
     type: 'text',
@@ -910,3 +1113,4 @@ export class AuditLog {
   @CreateDateColumn()
   createdAt: Date;
 }
+

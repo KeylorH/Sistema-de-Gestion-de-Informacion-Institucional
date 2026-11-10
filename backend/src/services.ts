@@ -20,9 +20,10 @@ import {
   InstitutionalCorrespondenceAttachment,
   InstitutionalCorrespondenceDirection,
   InstitutionalCorrespondenceStatus,
-  ExternalLink,
+  Folder,
   InstitutionalForm,
   News,
+  NewsAudience,
   NewsPriority,
   Procedure,
   RepositoryDocument,
@@ -33,6 +34,8 @@ import {
 
 import { compare, hash } from 'bcrypt';
 import { randomInt } from 'crypto';
+
+import { MailService } from './mail.service';
 
 
 /* =========================================================
@@ -74,27 +77,112 @@ export class AuditService {
   }
 
   async list(
-    current: any,
-    all = false,
-  ) {
-    const where =
-      all &&
-      current.roles.includes(RoleName.ADMIN)
-        ? {}
-        : ({
-            user: {
-              id: current.sub,
-            },
-          } as any);
+  current: any,
+  all = false,
+  filters: {
+    search?: string;
+    action?: string;
+    entity?: string;
+    from?: string;
+    to?: string;
+    page?: string;
+  } = {},
+) {
+  const page = Math.max(
+    1,
+    Math.floor(Number(filters.page) || 1),
+  );
+  const pageSize = 25;
 
-    return this.repo.find({
-      where,
-      order: {
-        createdAt: 'DESC',
-      },
-      take: 200,
+  const query = this.repo
+    .createQueryBuilder('audit')
+    .leftJoinAndSelect('audit.user', 'user');
+
+  // Esta restricción siempre se aplica antes de los filtros.
+  if (!(all && current.roles?.includes(RoleName.ADMIN))) {
+    query.andWhere('user.id = :userId', {
+      userId: current.sub,
     });
   }
+
+  const search = String(filters.search || '').trim();
+
+  if (search) {
+    query.andWhere(
+      `(
+        COALESCE(user.name, '') ILIKE :search
+        OR audit.action ILIKE :search
+        OR audit.entity ILIKE :search
+        OR COALESCE(audit.detail, '') ILIKE :search
+        OR COALESCE(CAST(audit.entityId AS text), '') ILIKE :search
+      )`,
+      { search: `%${search}%` },
+    );
+  }
+
+  if (filters.action?.trim()) {
+    query.andWhere('audit.action = :action', {
+      action: filters.action.trim(),
+    });
+  }
+
+  if (filters.entity?.trim()) {
+    query.andWhere('audit.entity = :entity', {
+      entity: filters.entity.trim(),
+    });
+  }
+
+  // Convierte el día local de Costa Rica a un instante.
+  const parseDay = (value?: string): Date | null => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return null;
+    }
+
+    const date = new Date(`${value}T00:00:00-06:00`);
+
+    if (
+      Number.isNaN(date.getTime()) ||
+      new Date(date.getTime() - 6 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10) !== value
+    ) {
+      return null;
+    }
+
+    return date;
+  };
+
+  const from = parseDay(filters.from);
+  const to = parseDay(filters.to);
+
+  if (from) {
+    query.andWhere('audit.createdAt >= :from', { from });
+  }
+
+  if (to) {
+    const nextDay = new Date(to.getTime() + 24 * 60 * 60 * 1000);
+    query.andWhere('audit.createdAt < :nextDay', { nextDay });
+  }
+
+  const total = await query.getCount();
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, pages);
+
+  const items = await query
+    .orderBy('audit.createdAt', 'DESC')
+    .addOrderBy('audit.id', 'DESC')
+    .skip((currentPage - 1) * pageSize)
+    .take(pageSize)
+    .getMany();
+
+  return {
+    items,
+    total,
+    page: currentPage,
+    pages,
+    pageSize,
+  };
+}
 }
 
 
@@ -1496,6 +1584,36 @@ export class InstitutionalCorrespondenceService {
 
 
 /* =========================================================
+   CARPETAS - UTILIDAD COMPARTIDA
+   Devuelve la carpeta indicada o, si no se indica ninguna,
+   la carpeta por defecto "Sin clasificar".
+========================================================= */
+
+async function resolveFolder(
+  folders: Repository<Folder>,
+  folderId?: string | null,
+): Promise<Folder | null> {
+  if (folderId) {
+    const folder = await folders.findOne({
+      where: { id: folderId },
+    });
+
+    if (!folder) {
+      throw new NotFoundException(
+        'Carpeta no encontrada',
+      );
+    }
+
+    return folder;
+  }
+
+  return folders.findOne({
+    where: { code: 'SIN-CLASIFICAR' },
+  });
+}
+
+
+/* =========================================================
    REPOSITORIO DOCUMENTAL
 ========================================================= */
 
@@ -1512,12 +1630,19 @@ export class RepositoryService {
     private users:
       Repository<User>,
 
+    @InjectRepository(Folder)
+    private folders:
+      Repository<Folder>,
+
     private audit:
       AuditService,
   ) {}
 
   list() {
     return this.repo.find({
+      relations: {
+        folder: true,
+      },
       order: {
         updatedAt:
           'DESC',
@@ -1531,6 +1656,9 @@ export class RepositoryService {
     const item =
       await this.repo.findOne({
         where: { id },
+        relations: {
+          folder: true,
+        },
       });
 
     if (!item) {
@@ -1566,6 +1694,12 @@ export class RepositoryService {
         });
     }
 
+    const folder =
+      await resolveFolder(
+        this.folders,
+        dto.folderId,
+      );
+
     const entity:
       RepositoryDocument =
       this.repo.create({
@@ -1590,6 +1724,7 @@ export class RepositoryService {
         size:
           file?.size || null,
         responsible,
+        folder,
       } as Partial<RepositoryDocument>);
 
     const saved =
@@ -1647,6 +1782,9 @@ export class RepositoryService {
     const item =
       await this.repo.findOne({
         where: { id },
+        relations: {
+          folder: true,
+        },
       });
 
     if (!item) {
@@ -1692,6 +1830,14 @@ export class RepositoryService {
       }
     }
 
+    if ('folderId' in dto) {
+      item.folder =
+        await resolveFolder(
+          this.folders,
+          dto.folderId,
+        );
+    }
+
     const saved =
       await this.repo.save(
         item,
@@ -1723,12 +1869,19 @@ export class ProcedureService {
     private repo:
       Repository<Procedure>,
 
+    @InjectRepository(Folder)
+    private folders:
+      Repository<Folder>,
+
     private audit:
       AuditService,
   ) {}
 
   list() {
     return this.repo.find({
+      relations: {
+        folder: true,
+      },
       order: {
         updatedAt: 'DESC',
       },
@@ -1739,6 +1892,9 @@ export class ProcedureService {
     const item =
       await this.repo.findOne({
         where: { id },
+        relations: {
+          folder: true,
+        },
       });
 
     if (!item) {
@@ -1754,6 +1910,12 @@ export class ProcedureService {
     dto: any,
     current: any,
   ) {
+    const folder =
+      await resolveFolder(
+        this.folders,
+        dto.folderId,
+      );
+
     const entity =
       this.repo.create({
         ...dto,
@@ -1799,6 +1961,7 @@ export class ProcedureService {
           Array.isArray(dto.relatedDocuments)
             ? dto.relatedDocuments
             : [],
+        folder,
       } as Partial<Procedure>);
 
     const saved =
@@ -1843,6 +2006,9 @@ export class ProcedureService {
     const item =
       await this.repo.findOne({
         where: { id },
+        relations: {
+          folder: true,
+        },
       });
 
     if (!item) {
@@ -1926,6 +2092,14 @@ export class ProcedureService {
     if (Array.isArray(dto.relatedDocuments)) {
       item.relatedDocuments =
         dto.relatedDocuments;
+    }
+
+    if ('folderId' in dto) {
+      item.folder =
+        await resolveFolder(
+          this.folders,
+          dto.folderId,
+        );
     }
 
     const saved =
@@ -2015,44 +2189,6 @@ export class FormsService {
 
 
 /* =========================================================
-   ENLACES
-========================================================= */
-
-@Injectable()
-export class LinksService {
-  constructor(
-    @InjectRepository(
-      ExternalLink,
-    )
-    private repo:
-      Repository<ExternalLink>,
-  ) {}
-
-  list() {
-    return this.repo.find({
-      where: {
-        active: true,
-      },
-      order: {
-        name: 'ASC',
-      },
-    });
-  }
-
-  create(dto: any) {
-    const entity =
-      this.repo.create(
-        dto as Partial<ExternalLink>,
-      );
-
-    return this.repo.save(
-      entity,
-    );
-  }
-}
-
-
-/* =========================================================
    NOTICIAS
 ========================================================= */
 
@@ -2071,6 +2207,9 @@ export class NewsService {
 
     private audit:
       AuditService,
+
+    private mail:
+      MailService,
   ) {}
 
   list() {
@@ -2109,6 +2248,99 @@ export class NewsService {
     }
 
     return priority as NewsPriority;
+  }
+
+  private normalizeAudience(
+    value: any,
+  ) {
+    const audience =
+      String(
+        value ||
+          NewsAudience.GENERAL,
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      !Object.values(
+        NewsAudience,
+      ).includes(
+        audience as NewsAudience,
+      )
+    ) {
+      throw new BadRequestException(
+        'El público debe ser GENERAL, ESTUDIANTES, PROFESORES o FUNCIONARIOS',
+      );
+    }
+
+    return audience as NewsAudience;
+  }
+
+  private priorityValue(
+    priority:
+      NewsPriority,
+  ) {
+    const values:
+      Record<
+        NewsPriority,
+        number
+      > = {
+      [NewsPriority.BAJA]: 1,
+      [NewsPriority.MEDIA]: 2,
+      [NewsPriority.ALTA]: 3,
+    };
+
+    return values[priority];
+  }
+
+  private async getRecipients(
+    news:
+      News,
+  ) {
+    const activeUsers =
+      await this.users.find({
+        where: {
+          active: true,
+        },
+      });
+
+    return activeUsers.filter(
+      (user) => {
+        if (
+          user.deletedAt ||
+          !user.receiveNewsEmails
+        ) {
+          return false;
+        }
+
+        const userAudience =
+          user.audienceType ||
+          NewsAudience.GENERAL;
+
+        const audienceMatches =
+          news.targetArea ===
+            NewsAudience.GENERAL ||
+          userAudience ===
+            news.targetArea;
+
+        if (!audienceMatches) {
+          return false;
+        }
+
+        const minimum =
+          user.minimumNewsPriority ||
+          NewsPriority.MEDIA;
+
+        return (
+          this.priorityValue(
+            news.priority,
+          ) >=
+          this.priorityValue(
+            minimum,
+          )
+        );
+      },
+    );
   }
 
   async create(
@@ -2153,11 +2385,9 @@ export class NewsService {
       'Eventos';
 
     const targetArea =
-      String(
-        dto.targetArea ||
-          'GENERAL',
-      ).trim() ||
-      'GENERAL';
+      this.normalizeAudience(
+        dto.targetArea,
+      );
 
     const priority =
       this.normalizePriority(
@@ -2196,10 +2426,39 @@ export class NewsService {
       'PUBLICACION',
       'Noticia',
       saved.id,
-      `Se publicó ${saved.title} | Categoría: ${saved.category} | Prioridad: ${saved.priority} | Área: ${saved.targetArea}`,
+      `Se publicó ${saved.title} | Categoría: ${saved.category} | Prioridad: ${saved.priority} | Público: ${saved.targetArea}`,
     );
+
+    if (saved.published) {
+      const recipients =
+        await this.getRecipients(
+          saved,
+        );
+
+      const result =
+        await this.mail
+          .sendNewsAlert(
+            saved,
+            recipients,
+          );
+
+      await this.audit.log(
+        current.sub,
+        result.sent
+          ? 'ALERTA_CORREO_ENVIADA'
+          : result.skipped
+          ? 'ALERTA_CORREO_OMITIDA'
+          : 'ALERTA_CORREO_ERROR',
+        'Noticia',
+        saved.id,
+        result.sent
+          ? `Se envió la alerta por correo a ${result.recipients} destinatario(s)`
+          : result.skipped
+          ? `No se envió correo: ${result.reason}. Destinatarios elegibles: ${result.recipients}`
+          : `Falló el envío de correo a ${result.recipients} destinatario(s): ${result.error}`,
+      );
+    }
 
     return saved;
   }
 }
-
