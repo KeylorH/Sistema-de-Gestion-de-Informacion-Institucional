@@ -533,47 +533,38 @@ export class Folder {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ length: 200 })
   name: string;
 
-  @Column({
-    nullable: true,
-  })
+  @Column({ length: 50, unique: true, nullable: true })
   code: string;
 
-  @Column('text', {
-    nullable: true,
-  })
+  @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({
-    default: 0,
-  })
+  @Column({ type: 'int', default: 1 })
+  level: number;
+
+  @Column({ length: 30, default: 'Default' })
+  color: string;
+
+  @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder: number;
 
-  @ManyToOne(
-    () => Folder,
-    (folder) => folder.children,
-    {
-      nullable: true,
-      onDelete: 'RESTRICT',
-    },
-  )
-  @JoinColumn({
-    name: 'parent_id',
+  @ManyToOne(() => Folder, (folder) => folder.children, {
+    onDelete: 'RESTRICT',
+    nullable: true,
   })
-  parent: Folder | null;
+  @JoinColumn({ name: 'parent_id' })
+  parent: Folder;
 
-  @OneToMany(
-    () => Folder,
-    (folder) => folder.parent,
-  )
+  @OneToMany(() => Folder, (folder) => folder.parent)
   children: Folder[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
 
@@ -1051,3 +1042,4 @@ export class AuditLog {
   @CreateDateColumn()
   createdAt: Date;
 }
+

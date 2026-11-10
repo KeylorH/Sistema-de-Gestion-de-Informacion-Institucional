@@ -78,6 +78,10 @@ import {
   FoldersService,
 } from './folders';
 
+import {
+  FolderImportService,
+} from './folder-import.service';
+
 /* =========================================================
    ENLACES (ACCESOS RÁPIDOS)
 ========================================================= */
@@ -273,6 +277,7 @@ const entities = [
 
     /* CARPETAS INSTITUCIONALES */
     FoldersService,
+    FolderImportService, // <-- Servicio de importación automática de carpetas
 
     RepositoryService,
     ProcedureService,

@@ -24,6 +24,7 @@ import {
 } from './entities';
 
 import { AuditService } from './services';
+import { FolderImportService } from './folder-import.service';
 import { JwtAuthGuard } from './auth';
 import { Role } from './roles';
 import { Roles } from './roles.decorator';
@@ -53,11 +54,12 @@ export class FoldersService implements OnModuleInit {
     private procedures: Repository<Procedure>,
 
     private audit: AuditService,
+    private folderImportService: FolderImportService,
   ) {}
 
   /*
-   * Al arrancar: crea la carpeta "Sin clasificar" y asigna
-   * a ella todo documento o procedimiento sin carpeta.
+   * Al arrancar: crea la carpeta "Sin clasificar", reasigna huérfanos
+   * y ejecuta la importación automática del árbol oficial.
    */
   async onModuleInit() {
     let defaultFolder = await this.repo.findOne({
@@ -73,6 +75,8 @@ export class FoldersService implements OnModuleInit {
             'Documentos y procedimientos pendientes de ubicar en la estructura oficial.',
           sortOrder: 9999,
           parent: null,
+          color: 'Default',
+          level: 1,
         }),
       );
     }
@@ -86,6 +90,9 @@ export class FoldersService implements OnModuleInit {
       'UPDATE procedures SET folder_id = $1 WHERE folder_id IS NULL',
       [defaultFolder.id],
     );
+
+    // Importación automática de la clasificación institucional
+    await this.folderImportService.importFromFile('clasificacionOrdenamiento.txt');
   }
 
   /* ---------- utilidades internas ---------- */
@@ -165,6 +172,8 @@ export class FoldersService implements OnModuleInit {
       name: folder.name,
       code: folder.code,
       description: folder.description,
+      color: folder.color || 'Default',
+      level: folder.level || 1,
       sortOrder: folder.sortOrder,
       parentId: folder.parent?.id ?? null,
       documentCount: own?.documents || 0,
@@ -292,22 +301,22 @@ export class FoldersService implements OnModuleInit {
         code: String(dto.code || '').trim() || null,
         description:
           String(dto.description || '').trim() || null,
+        color: String(dto.color || 'Default').trim(),
+        level: Number(dto.level) || 1,
         sortOrder: Number(dto.sortOrder) || 0,
         parent,
-      } as any),
+      }),
     );
-
-    const savedFolder = saved as unknown as Folder;
 
     await this.audit.log(
       current.sub,
       'CREACION',
       'Carpeta',
-      savedFolder.id,
-      `Se creó la carpeta ${savedFolder.name}`,
+      saved.id,
+      `Se creó la carpeta ${saved.name}`,
     );
 
-    return savedFolder;
+    return saved;
   }
 
   async update(id: string, dto: any, current: any) {
@@ -343,7 +352,6 @@ export class FoldersService implements OnModuleInit {
           );
         }
 
-        // Impide mover una carpeta dentro de sus descendientes.
         const byId = new Map(folders.map((f) => [f.id, f]));
         let cursor: Folder | undefined = newParent;
         let guard = 0;
@@ -383,12 +391,20 @@ export class FoldersService implements OnModuleInit {
     await this.ensureUniqueName(folder.name, newParentId, id);
 
     if (dto.code !== undefined) {
-      folder.code = String(dto.code || '').trim() || (null as any);
+      folder.code = String(dto.code || '').trim() || null;
     }
 
     if (dto.description !== undefined) {
       folder.description =
-        String(dto.description || '').trim() || (null as any);
+        String(dto.description || '').trim() || null;
+    }
+
+    if (dto.color !== undefined) {
+      folder.color = String(dto.color || 'Default').trim();
+    }
+
+    if (dto.level !== undefined) {
+      folder.level = Number(dto.level) || 1;
     }
 
     if (dto.sortOrder !== undefined) {
@@ -459,9 +475,6 @@ export class FoldersService implements OnModuleInit {
 
 /* =========================================================
    CONTROLADOR DE CARPETAS
-
-   CONSULTA:  ADMIN / EDITOR / CONSULTOR
-   GESTIÓN:   ADMIN
 ========================================================= */
 
 @Controller('folders')
