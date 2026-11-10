@@ -24,6 +24,8 @@ export type FolderNode = {
   name: string;
   code?: string | null;
   description?: string | null;
+  color?: string | null; // Color institucional (Red, Gold, Orange, Blue)
+  level?: number;        // Nivel jerárquico
   sortOrder: number;
   parentId: string | null;
   documentCount: number;
@@ -65,6 +67,22 @@ function countDeep(
       0,
     )
   );
+}
+
+/* Mapeo de colores institucionales a clases CSS */
+function getFolderColorClass(color?: string | null): string {
+  switch (color?.toLowerCase()) {
+    case 'red':
+      return 'folder-color-red';
+    case 'gold':
+      return 'folder-color-gold';
+    case 'orange':
+      return 'folder-color-orange';
+    case 'blue':
+      return 'folder-color-blue';
+    default:
+      return 'folder-color-default';
+  }
 }
 
 /* =========================================================
@@ -251,6 +269,8 @@ export function FolderBar({
     name: '',
     code: '',
     description: '',
+    color: 'Default',
+    level: 1,
     parentId: '',
   });
 
@@ -269,6 +289,8 @@ export function FolderBar({
       name: '',
       code: '',
       description: '',
+      color: 'Default',
+      level: (current?.level ?? 0) + 1,
       parentId: '',
     });
 
@@ -284,6 +306,8 @@ export function FolderBar({
       name: current.name,
       code: current.code || '',
       description: current.description || '',
+      color: current.color || 'Default',
+      level: current.level || 1,
       parentId: current.parentId || '',
     });
 
@@ -308,6 +332,8 @@ export function FolderBar({
           name: form.name.trim(),
           code: form.code.trim(),
           description: form.description.trim(),
+          color: form.color,
+          level: Number(form.level) || 1,
           parentId: nav.currentId,
         });
       } else if (mode === 'edit' && current) {
@@ -315,6 +341,8 @@ export function FolderBar({
           name: form.name.trim(),
           code: form.code.trim(),
           description: form.description.trim(),
+          color: form.color,
+          level: Number(form.level) || 1,
           parentId: form.parentId || null,
         });
       }
@@ -454,6 +482,34 @@ export function FolderBar({
               />
             </label>
 
+            <label>
+              Color institucional
+              <select
+                value={form.color}
+                onChange={(event) =>
+                  setForm({ ...form, color: event.target.value })
+                }
+              >
+                <option value="Default">Por defecto</option>
+                <option value="Red">Red (Rojo)</option>
+                <option value="Gold">Gold (Dorado)</option>
+                <option value="Orange">Orange (Naranja)</option>
+                <option value="Blue">Blue (Azul)</option>
+              </select>
+            </label>
+
+            <label>
+              Nivel
+              <input
+                type="number"
+                min="0"
+                value={form.level}
+                onChange={(event) =>
+                  setForm({ ...form, level: Number(event.target.value) })
+                }
+              />
+            </label>
+
             <label className="full">
               Descripción (opcional)
               <textarea
@@ -511,7 +567,7 @@ export function FolderBar({
               <button
                 type="button"
                 key={folder.id}
-                className="folder-card"
+                className={`folder-card ${getFolderColorClass(folder.color)}`}
                 onClick={() => nav.open(folder.id)}
               >
                 <span className="folder-card-icon">
